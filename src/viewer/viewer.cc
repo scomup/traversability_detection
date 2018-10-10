@@ -33,6 +33,9 @@
 #include <chrono>
 #include <thread>
 
+
+
+
 Viewer::Viewer()
 {
     t_ = 1e3/30;
@@ -42,6 +45,8 @@ Viewer::Viewer()
     view_point_y_ = 20;
     view_point_z_ = 10;
     view_point_f_ = 2000;
+
+    pose_ = Eigen::Matrix4d::Identity();
 }
 
 void Viewer::Run()
@@ -60,9 +65,10 @@ void Viewer::Run()
                 );
 
     // Add named OpenGL viewport to window and provide 3D Handler
+    auto handler = new pangolin::MyHandler3D(s_cam);
     pangolin::View& d_cam = pangolin::CreateDisplay()
             .SetBounds(0.0, 1.0, 0.0, 1.0)
-            .SetHandler(new pangolin::MyHandler3D(s_cam));
+            .SetHandler(handler);
 
     pangolin::OpenGlMatrix Twc;
     Twc.SetIdentity();
@@ -89,22 +95,47 @@ void Viewer::Run()
         }
         DrawCloudNormals(*pcl_point_cloud_normals_);
 
-        Eigen::Matrix4d mat4 = Eigen::Matrix4d::Identity();
-        mat4.block(0, 0, 3, 3) = RollPitchYaw(0.3,0.3,0.5).toRotationMatrix();
-        mat4.block(0, 3, 3, 1) = Eigen::Vector3d(-1.,0.,1.);
-        DrawIMU(mat4.data());
+        FindPoseOnSurface finder(pcl_point_cloud_normals_, kdtree_);
+        Eigen::Matrix4d trans;
+        if(handler->getPose(trans)){
+            pose_ =  pose_ * trans;
+            Eigen::Matrix4d pose_out;
+            finder.FindPoseLieOnTheSurface(pose_, pose_out);
+            pose_ = pose_out;
+
+        }
+        
+        DrawIMU(pose_.data());
+        //Eigen::Matrix4d mat4 = Eigen::Matrix4d::Identity();
+        //mat4.block(0, 0, 3, 3) = RollPitchYaw(0.3,0.3,0.5).toRotationMatrix();
+        //mat4.block(0, 3, 3, 1) = Eigen::Vector3d(-1.,0.,1.);
+
+        /*
+        DrawIMU(pose_.data());
+        int stat = Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1));
+        while(true){
+            if(stat == 0 || stat == -2)
+                break;
+            else if(stat == -1){
+                pose_(2, 3) -= 0.05;
+            }
+            else{
+                pose_(2, 3) += 0.05;
+            }
+            stat = Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1));
+
+        }
+        Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1),true);
+        DrawIMU(pose_.data());
+        */
+        
 
 
-        int K = 5;
-        pcl::PointNormal searchPoint;
-
-        searchPoint.x = mat4(0,3);
-        searchPoint.y = mat4(1,3);
-        searchPoint.z = mat4(2,3);
-
+        /*
         std::vector<int> pointIdxNKNSearch(K);
         std::vector<float> pointNKNSquaredDistance(K);
 
+        
         int nn = kdtree_.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
 
         if (nn > 0)
@@ -124,6 +155,11 @@ void Viewer::Run()
             std::vector<float> pointRadiusSquaredDistance;
             float radius = 0.2;
 
+            glColor3f(0,0,1);
+            glPointSize(20);
+            glBegin(GL_POINTS);
+            glVertex3f(searchPoint.x, searchPoint.y, searchPoint.z);
+            glEnd();
 
             if (kdtree_.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
             {
@@ -138,6 +174,7 @@ void Viewer::Run()
                     normal[0] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[0];
                     normal[1] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[1];
                     normal[2] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[2];
+                    glColor3f(1,0,0);
                     glPointSize(10);
                     glBegin(GL_POINTS);
                     glVertex3f(x, y, z);
@@ -154,23 +191,7 @@ void Viewer::Run()
             }
             
         }
-
-            //std::cout<<mat4<<std::endl;
-
-            /*
-        Eigen::Vector3d acc = imu_listener_->getAcc();
-        log.Log(acc(0),acc(1),acc(2));
-        //t += tinc;
-
-        pangolin::glDrawAxis(1);
-        DrawGrid(2,0.1);
-        Eigen::Matrix4d m = imu_listener_->getImuPose();
-        DrawIMU(m.data());
-        auto points = pcl_listener_->getCloud();
-        DrawPoints(points,m.data());
-        //if(menuShowPath)
-        //    DrawPath();
-*/
+        */
             pangolin::FinishFrame();
     }
     SetFinish();

@@ -32,6 +32,8 @@
 #include "pcl_conversions/pcl_conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
 
+#include "../find_pose_on_surface.h"
+
 
 //#include "../imu_listener.h"
 //#include "../pcl_listener.h"
@@ -68,6 +70,7 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud_;
     pcl::PointCloud<pcl::PointNormal>::Ptr pcl_point_cloud_normals_;
     pcl::KdTreeFLANN<pcl::PointNormal> kdtree_;
+    Eigen::Matrix4d pose_;
     std::mutex mutex_frame_;
 
 };
