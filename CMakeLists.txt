@@ -5,8 +5,8 @@ project(traversability_detection)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O0")
 
-set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall  -O3")
+#set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall  -O3")
 
 
 find_package(Boost REQUIRED COMPONENTS iostreams)
@@ -15,6 +15,9 @@ find_package(Eigen3 REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(PCL 1.2 REQUIRED)
 find_package(Pangolin REQUIRED)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+find_package(Flann REQUIRED)
+
 
 
 #find_package(Lua REQUIRED)
@@ -35,6 +38,7 @@ include_directories(${catkin_INCLUDE_DIRS})
 include_directories(${LUA_INCLUDE_DIR})
 include_directories(${CERES_INCLUDE_DIRS})
 include_directories(${Pangolin_INCLUDE_DIRS})
+include_directories(${FLANN_INCLUDE_DIRS})
 
 file(GLOB_RECURSE ALL_SRCS "*.cc")
 
@@ -50,6 +54,7 @@ ${Boost_LIBRARIES}
 ${PCL_LIBRARIES}
 ${CERES_LIBRARIES}
 ${Pangolin_LIBRARIES}
+${FLANN_LIBRARIES}
 pthread
 dl
 )

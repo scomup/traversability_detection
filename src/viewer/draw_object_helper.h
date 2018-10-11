@@ -202,4 +202,39 @@ GLint DrawGrid(GLdouble w, GLdouble s)
     return (0);
 }
 
+
+
+
+GLint DrawPlane(Eigen::Vector3d point, GLfloat radius, Eigen::Vector3d normal)
+{
+    GLfloat N = 20;
+    GLfloat step = (2 * M_PI / N);
+    float angle = 0.0;
+    GLfloat x, y, z;
+    
+    Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), normal);
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+    T.block(0, 0, 3, 3) = q.toRotationMatrix();
+    T.block(0, 3, 3, 1) = point;
+    glColor4f(0.0f,0.0f,0.0f,0.5f);
+    glPushMatrix();
+    glMultMatrixd(T.data());
+    glBegin(GL_TRIANGLES);
+    for (int j = 0; j < N; j++)
+    {
+        angle = j * step;
+        glVertex3f(0, 0, 0);
+        x = radius * cos(angle);
+        y = radius * sin(angle);
+        z = 0;
+        glVertex3f(x, y, z);
+        x = radius * cos(angle + step);
+        y = radius * sin(angle + step);
+        z = 0;
+        glVertex3f(x, y, z);
+    }
+    glEnd();
+    glPopMatrix();
+}
+
 #endif //SAMPLE_CARTO_TOP_VIEWER_DRAW_OBJECT_HELPER_H_

@@ -8,12 +8,15 @@
 #include "viewer/viewer.h"
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
+#include "rrt/tree.h"
 
 
 using namespace sample_carto;
 
 int main(int argc, char **argv)
 {
+
+    RRT::Tree<Eigen::Vector3d, pcl::PointNormal>(nullptr); 
     ::ros::init(argc, argv, "sample_carto_3d");
     ::ros::start();
 

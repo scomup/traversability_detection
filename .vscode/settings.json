@@ -50,6 +50,7 @@
         "bitset": "cpp",
         "complex": "cpp",
         "iomanip": "cpp",
-        "eigenvalues": "cpp"
+        "eigenvalues": "cpp",
+        "list": "cpp"
     }
 }

@@ -95,103 +95,64 @@ void Viewer::Run()
         }
         DrawCloudNormals(*pcl_point_cloud_normals_);
 
-        FindPoseOnSurface finder(pcl_point_cloud_normals_, kdtree_);
+        
+        CloudEstimator<pcl::PointNormal> finder(pcl_point_cloud_normals_, kdtree_);
+        double r = 0.2;
         Eigen::Matrix4d trans;
         if(handler->getPose(trans)){
             pose_ =  pose_ * trans;
             Eigen::Matrix4d pose_out;
-            finder.FindPoseLieOnTheSurface(pose_, pose_out);
+            Eigen::Matrix4d in_pose = pose_;
+            finder.FindPoseLieOnTheSurface(pose_, pose_out, r);
             pose_ = pose_out;
-
         }
         
         DrawIMU(pose_.data());
-        //Eigen::Matrix4d mat4 = Eigen::Matrix4d::Identity();
-        //mat4.block(0, 0, 3, 3) = RollPitchYaw(0.3,0.3,0.5).toRotationMatrix();
-        //mat4.block(0, 3, 3, 1) = Eigen::Vector3d(-1.,0.,1.);
 
-        /*
-        DrawIMU(pose_.data());
-        int stat = Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1));
-        while(true){
-            if(stat == 0 || stat == -2)
-                break;
-            else if(stat == -1){
-                pose_(2, 3) -= 0.05;
-            }
-            else{
-                pose_(2, 3) += 0.05;
-            }
-            stat = Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1));
-
-        }
-        Cov(pcl_point_cloud_normals_, kdtree_, pose_.block(0, 3, 3, 1),true);
-        DrawIMU(pose_.data());
-        */
-        
-
-
-        /*
-        std::vector<int> pointIdxNKNSearch(K);
-        std::vector<float> pointNKNSquaredDistance(K);
-
-        
-        int nn = kdtree_.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
-
-        if (nn > 0)
+        pcl::PointNormal searchPoint;
+        searchPoint.x = pose_(0,3);
+        searchPoint.y = pose_(1,3);
+        searchPoint.z = pose_(2,3);
+        std::vector<int> idx = finder.FindNearest(searchPoint, r);
+        finder.EstimateTraversability(searchPoint, r);
+        for (auto i : idx)
         {
-            double a_z = 0;
-            for (size_t i = 0; i < nn; ++i)
-            {
-                double z = pcl_point_cloud_normals_->points[pointIdxNKNSearch[i]].z;
-                a_z += z;
-            }
-            
-            a_z /= nn;
-            searchPoint.z = a_z;
-            mat4(2, 3) = a_z + 0.1;
-
-            std::vector<int> pointIdxRadiusSearch;
-            std::vector<float> pointRadiusSquaredDistance;
-            float radius = 0.2;
-
-            glColor3f(0,0,1);
-            glPointSize(20);
+            double x = pcl_point_cloud_normals_->points[i].x;
+            double y = pcl_point_cloud_normals_->points[i].y;
+            double z = pcl_point_cloud_normals_->points[i].z;
+            glColor3f(0, 0, 1);
+            glPointSize(10);
             glBegin(GL_POINTS);
-            glVertex3f(searchPoint.x, searchPoint.y, searchPoint.z);
+            glVertex3f(x, y, z);
             glEnd();
-
-            if (kdtree_.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
-            {
-                Eigen::Vector3d normal(0,0,0);
-                double a_z = 0;
-                for (size_t i = 0; i < pointIdxRadiusSearch.size(); ++i)
-                {
-                    double x = pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].x;
-                    double y = pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].y;
-                    double z = pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].z;
-                    a_z += z;
-                    normal[0] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[0];
-                    normal[1] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[1];
-                    normal[2] += pcl_point_cloud_normals_->points[pointIdxRadiusSearch[i]].normal[2];
-                    glColor3f(1,0,0);
-                    glPointSize(10);
-                    glBegin(GL_POINTS);
-                    glVertex3f(x, y, z);
-                    glEnd();
-                }
-                
-                normal /= pointIdxRadiusSearch.size();
-                a_z /= pointIdxRadiusSearch.size();
-                Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(mat4.block(0, 2, 3, 1), normal);
-                mat4.block(0, 0, 3, 3) = q.toRotationMatrix() * mat4.block(0, 0, 3, 3);
-                DrawIMU(mat4.data());
-
-
-            }
-            
         }
-        */
+        
+        Eigen::Vector4f plane_parameters_f;
+        Eigen::Vector4d plane_parameters;
+        float curvature;
+        pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters_f, curvature);
+        plane_parameters = plane_parameters_f.cast<double>();
+        //finder.GetNormalVector(searchPoint, idx, normal_vector);
+        //auto plane = finder.FindPlane(searchPoint, normal_vector);
+        auto plane_on_points = finder.FindPlaneOnCloud(idx, plane_parameters);
+        auto dist = finder.GetDistToPlane(searchPoint, plane_on_points);
+        Eigen::Vector3d projected_point = pose_.block(0,3,3,1) - dist * plane_parameters.head<3>();
+        searchPoint.x = projected_point.x();
+        searchPoint.y = projected_point.y();
+        searchPoint.z = projected_point.z();
+
+        auto dist2 = finder.GetDistToPlane(searchPoint, plane_on_points);
+        glColor3f(0, 0, 1);
+        glPointSize(20);
+        glBegin(GL_POINTS);
+        glVertex3f(searchPoint.x, searchPoint.y, searchPoint.z);
+        glEnd();
+
+        DrawPlane(projected_point,r,plane_parameters.head<3>());
+        glColor3f(0,0,1);
+        pangolin::glDrawLine(projected_point.x(),projected_point.y(),projected_point.z(), projected_point.x() + plane_parameters.x(),projected_point.y()+plane_parameters.y(),projected_point.z()+plane_parameters.z());
+
+
             pangolin::FinishFrame();
     }
     SetFinish();

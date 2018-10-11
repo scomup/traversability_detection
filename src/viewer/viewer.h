@@ -32,11 +32,8 @@
 #include "pcl_conversions/pcl_conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
 
-#include "../find_pose_on_surface.h"
+#include "../cloud_estimator.h"
 
-
-//#include "../imu_listener.h"
-//#include "../pcl_listener.h"
 
 
 class Viewer
