@@ -31,8 +31,7 @@
 #include "pcl/point_types.h"
 #include "pcl_conversions/pcl_conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
-
-#include "../cloud_estimator.h"
+#include "../drawer_for_cloud_analyzer.h"
 
 
 
@@ -46,8 +45,7 @@ public:
     void Run();
 
     void SetFinish();
-    void SetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud);
-    void SetCloudNormals(pcl::PointCloud<pcl::PointNormal>::Ptr pcl_point_cloud);
+    void SetCloudDrawer(std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer);
     bool isFinished(){return finish_;};
 
 private:
@@ -65,10 +63,9 @@ private:
 
     bool finish_;
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud_;
-    pcl::PointCloud<pcl::PointNormal>::Ptr pcl_point_cloud_normals_;
-    pcl::KdTreeFLANN<pcl::PointNormal> kdtree_;
     Eigen::Matrix4d pose_;
     std::mutex mutex_frame_;
+    std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer_;
 
 };
 

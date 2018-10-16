@@ -89,70 +89,24 @@ void Viewer::Run()
 
         pangolin::glDrawAxis(1);
         DrawGrid(200,1);
-        //DrawPoints(pcl_point_cloud_);
-        if(pcl_point_cloud_normals_ == nullptr){
-            continue;
+
+
+
+        if(drawer_for_cloud_analyzer_ != nullptr){
+
+            Eigen::Matrix4d trans;
+            if (handler->getPose(trans))
+            {
+                pose_ = pose_ * trans;
+                Eigen::Matrix4d pose_out;
+                Eigen::Matrix4d in_pose = pose_;
+                drawer_for_cloud_analyzer_->GetCloudAnalyzer()->FindPoseLieOnTheSurface(pose_, pose_out);
+                pose_ = pose_out;
+            }
+            DrawIMU(pose_.data());
+            drawer_for_cloud_analyzer_->DrawPoint();
+            drawer_for_cloud_analyzer_->DrawObj(pose_);
         }
-        DrawCloudNormals(*pcl_point_cloud_normals_);
-
-        
-        CloudEstimator<pcl::PointNormal> finder(pcl_point_cloud_normals_, kdtree_);
-        double r = 0.2;
-        Eigen::Matrix4d trans;
-        if(handler->getPose(trans)){
-            pose_ =  pose_ * trans;
-            Eigen::Matrix4d pose_out;
-            Eigen::Matrix4d in_pose = pose_;
-            finder.FindPoseLieOnTheSurface(pose_, pose_out, r);
-            pose_ = pose_out;
-        }
-        
-        DrawIMU(pose_.data());
-
-        pcl::PointNormal searchPoint;
-        searchPoint.x = pose_(0,3);
-        searchPoint.y = pose_(1,3);
-        searchPoint.z = pose_(2,3);
-        std::vector<int> idx = finder.FindNearest(searchPoint, r);
-        finder.EstimateTraversability(searchPoint, r);
-        for (auto i : idx)
-        {
-            double x = pcl_point_cloud_normals_->points[i].x;
-            double y = pcl_point_cloud_normals_->points[i].y;
-            double z = pcl_point_cloud_normals_->points[i].z;
-            glColor3f(0, 0, 1);
-            glPointSize(10);
-            glBegin(GL_POINTS);
-            glVertex3f(x, y, z);
-            glEnd();
-        }
-        
-        Eigen::Vector4f plane_parameters_f;
-        Eigen::Vector4d plane_parameters;
-        float curvature;
-        pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters_f, curvature);
-        plane_parameters = plane_parameters_f.cast<double>();
-        //finder.GetNormalVector(searchPoint, idx, normal_vector);
-        //auto plane = finder.FindPlane(searchPoint, normal_vector);
-        auto plane_on_points = finder.FindPlaneOnCloud(idx, plane_parameters);
-        auto dist = finder.GetDistToPlane(searchPoint, plane_on_points);
-        Eigen::Vector3d projected_point = pose_.block(0,3,3,1) - dist * plane_parameters.head<3>();
-        searchPoint.x = projected_point.x();
-        searchPoint.y = projected_point.y();
-        searchPoint.z = projected_point.z();
-
-        auto dist2 = finder.GetDistToPlane(searchPoint, plane_on_points);
-        glColor3f(0, 0, 1);
-        glPointSize(20);
-        glBegin(GL_POINTS);
-        glVertex3f(searchPoint.x, searchPoint.y, searchPoint.z);
-        glEnd();
-
-        DrawPlane(projected_point,r,plane_parameters.head<3>());
-        glColor3f(0,0,1);
-        pangolin::glDrawLine(projected_point.x(),projected_point.y(),projected_point.z(), projected_point.x() + plane_parameters.x(),projected_point.y()+plane_parameters.y(),projected_point.z()+plane_parameters.z());
-
-
             pangolin::FinishFrame();
     }
     SetFinish();
@@ -165,15 +119,7 @@ void Viewer::SetFinish()
     finish_ = true;
 }
 
-void Viewer::SetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud){
-    pcl_point_cloud_ = pcl_point_cloud;
-    
+
+void Viewer::SetCloudDrawer(std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer){
+    drawer_for_cloud_analyzer_ = drawer_for_cloud_analyzer;
 }
-
-void Viewer::SetCloudNormals(pcl::PointCloud<pcl::PointNormal>::Ptr pcl_point_cloud){
-    pcl_point_cloud_normals_ = pcl_point_cloud;
-    kdtree_.setInputCloud(pcl_point_cloud_normals_);
-
-}
-
-

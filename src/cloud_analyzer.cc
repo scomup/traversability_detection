@@ -1,26 +1,26 @@
-#include "cloud_estimator.h"
+#include "cloud_analyzer.h"
 #include <Eigen/Eigenvalues>
 
 template <typename POINT_TYPE>
-CloudEstimator<POINT_TYPE>::CloudEstimator(typename pcl::PointCloud<POINT_TYPE>::Ptr pcl_point_cloud,
-                                                 typename pcl::KdTreeFLANN<POINT_TYPE> kdtree)
-    : pcl_point_cloud_(pcl_point_cloud),
-      kdtree_(kdtree) {}
+CloudAnalyzer<POINT_TYPE>::CloudAnalyzer(typename pcl::PointCloud<POINT_TYPE>::Ptr pcl_point_cloud)
+    : pcl_point_cloud_(pcl_point_cloud)
+{
+    kdtree_.setInputCloud(pcl_point_cloud_);
+}
 
 template <typename POINT_TYPE>
-std::vector<int> CloudEstimator<POINT_TYPE>::FindNearest(const POINT_TYPE point, const double radius)
+std::vector<int> CloudAnalyzer<POINT_TYPE>::FindNearest(const POINT_TYPE point)
 {
 
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
-    kdtree_.radiusSearch(point, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance);
+    kdtree_.radiusSearch(point, radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance);
     return pointIdxRadiusSearch;
 }
 
 template <typename POINT_TYPE>
-bool CloudEstimator<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &in_pose,
-                                                        Eigen::Matrix4d &out_pose,
-                                                        const double radius)
+bool CloudAnalyzer<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &in_pose,
+                                                        Eigen::Matrix4d &out_pose)
 {
     Eigen::Vector3d t = in_pose.block(0, 3, 3, 1);
     POINT_TYPE point;
@@ -28,19 +28,17 @@ bool CloudEstimator<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &
     point.y = t.y();
     point.z = t.z();
 
-    std::vector<int> idx = FindNearest(point, radius);
+    std::vector<int> idx = FindNearest(point);
     if (idx.size() < 5)
         return false;
-    Eigen::Vector4f plane_parameters_f;
-    Eigen::Vector4d plane_parameters;
+    Eigen::Vector4f plane_parameters;
 
     float curvature;
-    pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters_f, curvature);
-    plane_parameters = plane_parameters_f.cast<double>();
-    auto plane_on_points = FindPlaneOnCloud(idx, plane_parameters);
+    pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters, curvature);
+    auto plane_on_points = FindPlaneOnCloud(idx, plane_parameters.cast<double>());
 
     auto dist = GetDistToPlane(point, plane_on_points);
-    Eigen::Vector3d projected_point = t - dist*plane_parameters.head<3>();
+    Eigen::Vector3d projected_point = t - dist*plane_parameters.head<3>().cast<double>();
 
     if (plane_parameters.z() < 0)
     {
@@ -49,13 +47,13 @@ bool CloudEstimator<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &
     out_pose = Eigen::Matrix4d::Identity();
     out_pose.block(0, 3, 3, 1) = projected_point;
     auto z_axis = in_pose.block(0, 2, 3, 1);
-    Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(z_axis, plane_parameters.head<3>());
+    Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(z_axis, plane_parameters.head<3>().cast<double>());
     out_pose.block(0, 0, 3, 3) = q * in_pose.block(0, 0, 3, 3);
     return true;
 }
 
 template <typename POINT_TYPE>
-Eigen::Vector4d CloudEstimator<POINT_TYPE>::FindPlane(const POINT_TYPE point,
+Eigen::Vector4d CloudAnalyzer<POINT_TYPE>::FindPlane(const POINT_TYPE point,
                                                          const Eigen::Vector3d &normal_vector)
 {
     double x = point.x;
@@ -69,7 +67,7 @@ Eigen::Vector4d CloudEstimator<POINT_TYPE>::FindPlane(const POINT_TYPE point,
 }
 
 template <typename POINT_TYPE>
-double CloudEstimator<POINT_TYPE>::GetDistToPlane(const POINT_TYPE point,
+double CloudAnalyzer<POINT_TYPE>::GetDistToPlane(const POINT_TYPE point,
                                                      const Eigen::Vector4d &plane)
 {
     double x = point.x;
@@ -84,7 +82,7 @@ double CloudEstimator<POINT_TYPE>::GetDistToPlane(const POINT_TYPE point,
 }
 
 template <typename POINT_TYPE>
-Eigen::Vector4d CloudEstimator<POINT_TYPE>::FindPlaneOnCloud(const std::vector<int> &idx,
+Eigen::Vector4d CloudAnalyzer<POINT_TYPE>::FindPlaneOnCloud(const std::vector<int> &idx,
                                                                         const Eigen::Vector4d &plane)
 {
     double max_dist = -std::numeric_limits<double>::max();
@@ -102,10 +100,19 @@ Eigen::Vector4d CloudEstimator<POINT_TYPE>::FindPlaneOnCloud(const std::vector<i
 }
 
 template <typename POINT_TYPE>
-bool CloudEstimator<POINT_TYPE>::EstimateTraversability(const POINT_TYPE point,
-                                                        const double radius)
+bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const Eigen::Vector3d point)
 {
-    std::vector<int> idx = FindNearest(point, radius);
+    POINT_TYPE search_point;
+    search_point.x = point.x();
+    search_point.y = point.y();
+    search_point.z = point.z();
+    return EstimateTraversability(search_point);
+}
+
+template <typename POINT_TYPE>
+bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const POINT_TYPE point)
+{
+    std::vector<int> idx = FindNearest(point);
     if (idx.size() < 5)
         return false;
     Eigen::Vector4f plane_parameters_f;
@@ -120,8 +127,8 @@ bool CloudEstimator<POINT_TYPE>::EstimateTraversability(const POINT_TYPE point,
     }
     Eigen::AngleAxisd angle_axis(Eigen::Quaterniond::FromTwoVectors(
         plane_parameters.head<3>(), Eigen::Vector3d::UnitZ()));
-        std::cout<<"angle: "<<angle_axis.angle()<<std::endl;
-    if (angle_axis.angle() > max_angle)
+        //std::cout<<"angle: "<<angle_axis.angle()<<std::endl;
+    if (angle_axis.angle() > max_angle_)
         return false;
 
     std::vector<double> dists;
@@ -142,8 +149,8 @@ bool CloudEstimator<POINT_TYPE>::EstimateTraversability(const POINT_TYPE point,
     }
     var /= dists.size();
     double sd = std::sqrt(var);
-    std::cout<<"sd:"<<sd<<std::endl;
-    if (sd > max_sd)
+    //std::cout<<"sd:"<<sd<<std::endl;
+    if (sd > max_sd_)
         return false;
     return true;
 }
