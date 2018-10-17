@@ -18,6 +18,32 @@ std::vector<int> CloudAnalyzer<POINT_TYPE>::FindNearest(const POINT_TYPE point)
     return pointIdxRadiusSearch;
 }
 
+
+template <typename POINT_TYPE>
+bool CloudAnalyzer<POINT_TYPE>::FindPointLieOnTheSurface(const Eigen::Vector3d &in_point,
+                                                         Eigen::Vector3d &out_point)
+{
+    POINT_TYPE point;
+    point.x = in_point.x();
+    point.y = in_point.y();
+    point.z = in_point.z();
+
+    std::vector<int> idx = FindNearest(point);
+    if (idx.size() < 5){
+        return false;
+    }
+    Eigen::Vector4f plane_parameters;
+
+    float curvature;
+    pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters, curvature);
+    auto plane_on_points = FindPlaneOnCloud(idx, plane_parameters.cast<double>());
+
+    auto dist = GetDistToPlane(point, plane_on_points);
+    out_point = in_point - dist*plane_parameters.head<3>().cast<double>();
+
+    return true;
+}
+
 template <typename POINT_TYPE>
 bool CloudAnalyzer<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &in_pose,
                                                         Eigen::Matrix4d &out_pose)

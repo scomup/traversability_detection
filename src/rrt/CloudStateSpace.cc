@@ -23,8 +23,20 @@ bool CloudStateSpace::stateValid(const Vector3d& pt) const {
     if (!VoxelStateSpace::stateValid(pt))
         return false;
     if (cloud_analyzer_->EstimateTraversability(pt))
-        return false;
-    return true;
+        return true;
+    return false;
+}
+
+Eigen::Vector3d CloudStateSpace::intermediateState(const Eigen::Vector3d &source,
+                                                   const Eigen::Vector3d &target,
+                                                   double stepSize) const
+{
+    Eigen::Vector3d delta = target - source;
+    delta = delta / delta.norm(); //  unit vector
+    Eigen::Vector3d val = source + delta * stepSize;
+    Eigen::Vector3d new_point;
+    cloud_analyzer_->FindPointLieOnTheSurface(val, new_point);
+    return new_point;
 }
 
 bool CloudStateSpace::transitionValid(const Vector3d &from,

@@ -28,6 +28,9 @@ public:
   bool FindPoseLieOnTheSurface(const Eigen::Matrix4d &in_pose,
                                Eigen::Matrix4d &out_pose);
 
+  bool FindPointLieOnTheSurface(const Eigen::Vector3d &in_point,
+                                Eigen::Vector3d &out_point);
+
   bool EstimateTraversability(const POINT_TYPE point);
 
   bool EstimateTraversability(const Eigen::Vector3d point);
@@ -50,9 +53,9 @@ private:
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr pcl_point_cloud_;
   typename pcl::KdTreeFLANN<POINT_TYPE> kdtree_;
-  double max_angle_ = M_PI / 6;
-  double max_sd_ = 0.05;
-  double radius_ = 0.2;
+  double max_angle_ = M_PI / 8;
+  double max_sd_ = 0.1;
+  double radius_ = 0.3;
 };
 
 //template class CloudAnalyzer<pcl::PointNormal>;

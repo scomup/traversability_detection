@@ -357,8 +357,9 @@ public:
         //  the they're really close together.
         T intermediateState;
         if (_isASCEnabled) {
-            intermediateState = _stateSpace->intermediateState(
-                source->state(), target, stepSize(), maxStepSize());
+            //todo:
+            //intermediateState = _stateSpace->intermediateState(
+            //    source->state(), target, stepSize(), maxStepSize());
         } else {
             intermediateState = _stateSpace->intermediateState(
                 source->state(), target, stepSize());

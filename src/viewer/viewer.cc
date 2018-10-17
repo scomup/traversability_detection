@@ -82,16 +82,20 @@ void Viewer::Run()
     {
 
 
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         d_cam.Activate(s_cam);
-
-
         pangolin::glDrawAxis(1);
         DrawGrid(200,1);
 
+        glColor3f(0.0f, 0.0f, 0.0f);
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        glVertex3f(5, -19, -0.2);
+        glVertex3f(42, -65, 2.3);
 
-
+        glEnd();
         if(drawer_for_cloud_analyzer_ != nullptr){
 
             Eigen::Matrix4d trans;
@@ -103,11 +107,55 @@ void Viewer::Run()
                 drawer_for_cloud_analyzer_->GetCloudAnalyzer()->FindPoseLieOnTheSurface(pose_, pose_out);
                 pose_ = pose_out;
             }
-            DrawIMU(pose_.data());
+            //DrawIMU(pose_.data());
             drawer_for_cloud_analyzer_->DrawPoint();
-            drawer_for_cloud_analyzer_->DrawObj(pose_);
+            //drawer_for_cloud_analyzer_->DrawObj(pose_);
         }
-            pangolin::FinishFrame();
+
+        if (rrt_ != nullptr)
+        {
+            auto& start_tree = rrt_->startTree();
+            auto& goal_tree = rrt_->goalTree();
+            auto start_node = rrt_->startSolutionNode(); 
+            //auto goal_node = rrt_->goalSolutionNode();
+
+            auto path = rrt_->getPath();
+            glColor3f(0.0f, 0.0f, 0.0f);
+            glLineWidth(10);
+            glBegin(GL_LINE_STRIP);
+            for (auto it = path.begin(); it != path.end(); it++)
+            {
+                glVertex3f(it->x(), it->y(), it->z());
+            }
+            glEnd();
+
+            glLineWidth(5);
+            glColor3f(0.0f, 1.0f, 0.0f);
+            for (const auto &node : start_tree.allNodes())
+            {
+                if (node.parent())
+                {
+                    auto &p = node.parent()->state();
+                    auto &c = node.state();
+                    pangolin::glDrawLine(p.x(), p.y(), p.z(),c.x(), c.y(), c.z()); 
+                }
+            }
+            glColor3f(0.0f, 0.0f, 1.0f);
+            for (const auto &node : goal_tree.allNodes())
+            {
+
+                if (node.parent())
+                {
+                    auto &p = node.parent()->state();
+                    auto &c = node.state();
+                    pangolin::glDrawLine(p.x(), p.y(), p.z(),c.x(), c.y(), c.z()); 
+                }
+            }
+
+
+        }
+
+        pangolin::FinishFrame();
     }
     SetFinish();
 }

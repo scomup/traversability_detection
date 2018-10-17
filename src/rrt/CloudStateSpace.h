@@ -37,7 +37,12 @@ public:
   //const ObstacleGrid& obstacleGrid() const;
   //ObstacleGrid& obstacleGrid();
 
-  //private:
+
+  Eigen::Vector3d intermediateState(const Eigen::Vector3d &source,
+                                    const Eigen::Vector3d &target,
+                                    double stepSize) const;
+
+private:
   std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer_;
   double min_check_step_ = 0.1;
 };

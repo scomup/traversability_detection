@@ -130,13 +130,15 @@ inline void DrawPoints(pcl::PointCloud<pcl::PointXYZ> &pcl_point_cloud)
     //glMultMatrixd(twc);
     glColor3f(1.0f,0.0f,0.0f);
     glPointSize(3);
-    glBegin(GL_POINTS);
 
     for (const auto &point : pcl_point_cloud)
-    {
+    {   
+        auto color = point.z > 0 ? point.z * 40 : -point.z * 40;
+        pangolin::glColorHSV( color);
+        glBegin(GL_POINTS);
         glVertex3f(point.x, point.y, point.z);
+        glEnd();
     }
-    glEnd();
     //glPopMatrix();
 }
 

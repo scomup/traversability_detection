@@ -19,12 +19,12 @@ public:
   {
     if (cloud_analyzer_->pcl_point_cloud_ == nullptr)
       return;
-    glColor3f(1.0f, 0.0f, 0.0f);
     glPointSize(3);
     glBegin(GL_POINTS);
 
     for (const auto &point : *cloud_analyzer_->pcl_point_cloud_)
     {
+      pangolin::glColorHSV( std::abs(point.z * 20));
       glVertex3f(point.x, point.y, point.z);
     }
     glEnd();

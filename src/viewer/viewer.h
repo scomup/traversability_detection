@@ -32,6 +32,7 @@
 #include "pcl_conversions/pcl_conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
 #include "../drawer_for_cloud_analyzer.h"
+#include "../rrt/BiRRT.h"
 
 
 
@@ -46,6 +47,7 @@ public:
 
     void SetFinish();
     void SetCloudDrawer(std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer);
+    void SetRRT(std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt){rrt_ = rrt;};
     bool isFinished(){return finish_;};
 
 private:
@@ -66,6 +68,7 @@ private:
     Eigen::Matrix4d pose_;
     std::mutex mutex_frame_;
     std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer_;
+    std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt_;
 
 };
 

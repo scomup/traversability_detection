@@ -55,6 +55,8 @@ ${PCL_LIBRARIES}
 ${CERES_LIBRARIES}
 ${Pangolin_LIBRARIES}
 ${FLANN_LIBRARIES}
+/usr/lib/liblas.so
+/usr/lib/liblas_c.so
 pthread
 dl
 )
