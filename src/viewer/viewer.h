@@ -51,6 +51,7 @@ public:
     bool isFinished(){return finish_;};
 
 private:
+    void RunRRT();
 
     double t_;
     double image_width_;
@@ -69,6 +70,9 @@ private:
     std::mutex mutex_frame_;
     std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer_;
     std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt_;
+
+    Eigen::Vector3d start_ = Eigen::Vector3d(0,0,0);
+    Eigen::Vector3d goal_ = Eigen::Vector3d(0,0,0);
 
 };
 

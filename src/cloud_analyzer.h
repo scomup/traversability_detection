@@ -53,8 +53,8 @@ private:
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr pcl_point_cloud_;
   typename pcl::KdTreeFLANN<POINT_TYPE> kdtree_;
-  double max_angle_ = M_PI / 8;
-  double max_sd_ = 0.1;
+  double max_angle_ = M_PI / 3;
+  double max_sd_ = 0.05;
   double radius_ = 0.3;
 };
 

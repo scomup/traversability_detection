@@ -87,37 +87,51 @@ void Viewer::Run()
         glClearColor(1.0f,1.0f,1.0f,1.0f);
         d_cam.Activate(s_cam);
         pangolin::glDrawAxis(1);
-        DrawGrid(200,1);
+        //DrawGrid(200,1);
 
-        glColor3f(0.0f, 0.0f, 0.0f);
-        glPointSize(10);
-        glBegin(GL_POINTS);
-        glVertex3f(5, -19, -0.2);
-        glVertex3f(42, -65, 2.3);
+        //GetObjectCoordinates(const OpenGlRenderState &cam_state, double winx, double winy, double winzdepth, GLdouble &x, GLdouble &y, GLdouble &z) const;
 
-        glEnd();
         if(drawer_for_cloud_analyzer_ != nullptr){
-
-            Eigen::Matrix4d trans;
-            if (handler->getPose(trans))
-            {
-                pose_ = pose_ * trans;
-                Eigen::Matrix4d pose_out;
-                Eigen::Matrix4d in_pose = pose_;
-                drawer_for_cloud_analyzer_->GetCloudAnalyzer()->FindPoseLieOnTheSurface(pose_, pose_out);
-                pose_ = pose_out;
-            }
-            //DrawIMU(pose_.data());
             drawer_for_cloud_analyzer_->DrawPoint();
             //drawer_for_cloud_analyzer_->DrawObj(pose_);
         }
 
         if (rrt_ != nullptr)
         {
+            if (handler->getSign())
+            {
+                //pose_ = pose_ * trans;
+                //Eigen::Matrix4d pose_out;
+                //Eigen::Matrix4d in_pose = pose_;
+                //drawer_for_cloud_analyzer_->GetCloudAnalyzer()->FindPoseLieOnTheSurface(pose_, pose_out);
+                //pose_ = pose_out;
+                //rrt_->reset();
+                rrt_->setStartState(start_);
+                rrt_->setGoalState(goal_);
+                auto t = new std::thread(&Viewer::RunRRT, this);
+            }
+
             auto& start_tree = rrt_->startTree();
             auto& goal_tree = rrt_->goalTree();
-            auto start_node = rrt_->startSolutionNode(); 
-            //auto goal_node = rrt_->goalSolutionNode();
+            start_ = *handler->getStart();
+            goal_ = *handler->getGoal();
+
+            if (start_ != Eigen::Vector3d(0,0,0))
+            {
+                glColor3f(0.0f, 0.0f, 0.0f);
+                glPointSize(10);
+                glBegin(GL_POINTS);
+                glVertex3f(start_.x(), start_.y(), start_.z());
+                glEnd();
+            }
+            if (goal_ != Eigen::Vector3d(0,0,0))
+            {
+                glColor3f(0.0f, 0.0f, 0.0f);
+                glPointSize(10);
+                glBegin(GL_POINTS);
+                glVertex3f(goal_.x(), goal_.y(), goal_.z());
+                glEnd();
+            }
 
             auto path = rrt_->getPath();
             glColor3f(0.0f, 0.0f, 0.0f);
@@ -151,8 +165,6 @@ void Viewer::Run()
                     pangolin::glDrawLine(p.x(), p.y(), p.z(),c.x(), c.y(), c.z()); 
                 }
             }
-
-
         }
 
         pangolin::FinishFrame();
@@ -160,7 +172,10 @@ void Viewer::Run()
     SetFinish();
 }
 
-
+void Viewer::RunRRT()
+{
+    rrt_->run();
+}
 
 void Viewer::SetFinish()
 {

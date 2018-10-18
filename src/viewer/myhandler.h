@@ -9,7 +9,9 @@ struct MyHandler3D : Handler3D
 {
   std::mutex mutex_;
   Eigen::Matrix4d trans_pose_;
-  bool done_;
+  Eigen::Vector3d start_ = Eigen::Vector3d(0,0,0);
+  Eigen::Vector3d goal_ = Eigen::Vector3d(0,0,0);
+  bool pause_to_run_;
   MyHandler3D(OpenGlRenderState &cam_state,
               AxisDirection enforce_up = AxisZ,
               //AxisDirection enforce_up = AxisNone,
@@ -17,7 +19,7 @@ struct MyHandler3D : Handler3D
               float zoom_fraction = PANGO_DFLT_HANDLER3D_ZF): 
       Handler3D(cam_state, enforce_up, trans_scale, zoom_fraction)
       {
-          done_ = true;
+          pause_to_run_ = true;
           trans_pose_ = Eigen::Matrix4d::Identity();
       };
 
@@ -56,14 +58,16 @@ Eigen::Quaterniond RollPitchYaw(const double roll, const double pitch,
     return yaw_angle * pitch_angle * roll_angle;
 }
 
-void Keyboard(View &, unsigned char key, int x, int y, bool pressed)
+void Keyboard(View &display, unsigned char key, int x, int y, bool pressed)
 {
     std::unique_lock<std::mutex> lock(mutex_);
     // TODO: hooks for reset / changing mode (perspective / ortho etc)
     if(!pressed)
     return;
+
+    /*
     trans_pose_ = Eigen::Matrix4d::Identity();
-    done_ = false;
+    pause_to_run_ = false;
 
     if (key == 229 )//up
     {
@@ -82,20 +86,62 @@ void Keyboard(View &, unsigned char key, int x, int y, bool pressed)
     {
         trans_pose_.block(0, 0, 3, 3) = RollPitchYaw(0,0,0.1).toRotationMatrix();
     }
+    */
+    if (key == 's' || key == 'g') //left
+    {
+        
+        GetPosNormal(display, x, y, p, Pw, Pc, n, last_z);
+        if (ValidWinDepth(p[2]))
+        {
+            last_z = p[2];
+        }
+
+        if (!ValidWinDepth(last_z))
+        return;
+
+        GLprecision pc[3], pw[3];
+        PixelUnproject(display, x, y, last_z, pc);
+        const pangolin::OpenGlMatrix mv = cam_state->GetModelViewMatrix();
+        GLprecision T_wc[3 * 4];
+        LieSE3from4x4(T_wc, mv.Inverse().m);
+        LieApplySE3vec(pw, T_wc, pc);
+        //printf("%f %f %f\n", pw[0], pw[1], pw[2]);
+        if (key == 's'){
+            start_ = Eigen::Vector3d(pw[0], pw[1], pw[2]);
+        }
+        else{
+            goal_  = Eigen::Vector3d(pw[0], pw[1], pw[2]);
+        }
+    }
+    else if (key == 'r'){
+        pause_to_run_ = false;
+    }
   }
 
-  bool getPose(Eigen::Matrix4d& pose)
+  bool getSign()
   {
       std::unique_lock<std::mutex> lock(mutex_);
-      if (done_){
+      if (pause_to_run_){
           return false;
       }
       else{
-          done_ = true;
-          pose = trans_pose_;
+          pause_to_run_ = true;
+          //pose = trans_pose_;
           return true;
 
       }
+  }
+
+  Eigen::Vector3d *getStart()
+  {
+      std::unique_lock<std::mutex> lock(mutex_);
+      return &start_;
+  }
+
+  Eigen::Vector3d *getGoal()
+  {
+      std::unique_lock<std::mutex> lock(mutex_);
+      return &goal_;
   }
 };
 
