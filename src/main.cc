@@ -36,6 +36,7 @@ void ReadLas (const std::string &file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr 
     liblas::ReaderFactory f;
     liblas::Reader reader = f.CreateWithStream(ifs);
     unsigned long int nbPoints=reader.GetHeader().GetPointRecordsCount();
+    std::cout<<"Cloud size:"<<nbPoints<<std::endl;
 
 	// Fill in the cloud data
 	cloud->width    = nbPoints;				// This means that the point cloud is "unorganized"
@@ -84,10 +85,6 @@ void ReadLas (const std::string &file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr 
 int main(int argc, char **argv)
 {
 
-    ::ros::init(argc, argv, "sample_carto_3d");
-    ::ros::start();
-
-/*
     std::string filename;
     if (argc >= 2)
     {
@@ -97,47 +94,14 @@ int main(int argc, char **argv)
     {
         std::cout<<"No input file!"<<std::endl;
         //return 0;
-        filename = std::string("/home/liu/Downloads/short_test.bag");
+        filename = std::string("/home/liu/bag/lx35/lx35_7f_aisle.bag");
     }
 
-    top::PlayableBagMultiplexer playable_bag_multiplexer;
-
-    playable_bag_multiplexer.AddPlayableBag(top::PlayableBag(
-        filename, 0, ros::TIME_MIN, ros::TIME_MAX, ::ros::Duration(1.0),
-        [](const rosbag::MessageInstance &msg) { return true; }));
-
-    auto viewer = new Viewer();
-    auto viewer_thread = std::thread(&Viewer::Run, viewer);
-    
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-
-    while (playable_bag_multiplexer.IsMessageAvailable())
-    {
-        if (!::ros::ok()){
-            return 0;
-        }
-
-        const auto next_msg_tuple = playable_bag_multiplexer.GetNextMessage();
-        const rosbag::MessageInstance &msg = std::get<0>(next_msg_tuple);
-        //const int bag_index = std::get<1>(next_msg_tuple);
-        //const bool is_last_message_in_bag = std::get<2>(next_msg_tuple);
-
-        if (msg.isType<sensor_msgs::PointCloud2>()){
-            std::string topic = std::string(msg.getTopic());
-            if (topic != "/mapcloud")
-                continue;
-
-            pcl::fromROSMsg(*msg.instantiate<sensor_msgs::PointCloud2>(), *cloud);
-
-            break;
-        }
-    }
-*/
     auto viewer = new Viewer();
     auto viewer_thread = std::thread(&Viewer::Run, viewer);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-    ReadLas("/home/liu/points.las", cloud);
+    ReadLas(filename, cloud);
 
     auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(cloud);
     auto drawer_for_cloud_analyzer = std::make_shared<DrawerForCloudAnalyzer>(cloud_analyzer);
@@ -157,7 +121,7 @@ int main(int argc, char **argv)
     bi_rrt->setGoalState(Eigen::Vector3d(-98, 0, -2.3));
     bi_rrt->setMaxStepSize(30);
     bi_rrt->setGoalMaxDist(0.5);
-    bi_rrt->setStepSize(0.5);
+    bi_rrt->setStepSize(1);
     bi_rrt->setMaxIterations(100000);
 
     //RRT::VoxeltateSpace<Eigen::Vector3d> state_space(bounds);
@@ -165,16 +129,6 @@ int main(int argc, char **argv)
     viewer->SetRRT(bi_rrt);
     //bi_rrt->run();
 
-
-    ros::Rate loop_rate(100);
-    while (::ros::ok())
-    {
-        loop_rate.sleep();
-        if (viewer->isFinished())
-        {   
-            break;
-        }
-    }
     viewer_thread.join();
     
 }
