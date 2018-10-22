@@ -22,7 +22,7 @@ CloudStateSpace::CloudStateSpace(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> c
 bool CloudStateSpace::stateValid(const Vector3d& pt) const {
     if (!VoxelStateSpace::stateValid(pt))
         return false;
-    if (cloud_analyzer_->EstimateTraversability(pt))
+    if (cloud_analyzer_->EstimateTraversabilityLite(pt))
         return true;
     return false;
 }

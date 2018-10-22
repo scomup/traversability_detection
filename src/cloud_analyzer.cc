@@ -1,4 +1,5 @@
 #include "cloud_analyzer.h"
+#include <pcl/features/normal_3d.h>
 #include <Eigen/Eigenvalues>
 
 template <typename POINT_TYPE>
@@ -6,16 +7,64 @@ CloudAnalyzer<POINT_TYPE>::CloudAnalyzer(typename pcl::PointCloud<POINT_TYPE>::P
     : pcl_point_cloud_(pcl_point_cloud)
 {
     kdtree_.setInputCloud(pcl_point_cloud_);
+    pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;
+    ne.setInputCloud(pcl_point_cloud_);
+    typename pcl::search::KdTree<POINT_TYPE>::Ptr tree(new pcl::search::KdTree<POINT_TYPE>());
+    ne.setSearchMethod(tree);
+    normal_ = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud<pcl::Normal>);
+    ne.setRadiusSearch(radius_);
+    ne.compute(*normal_);
+    for (auto &n : *normal_)
+    {
+        if (n.normal[2] < 0)
+        {
+            n.normal[0] = -n.normal[0];
+            n.normal[1] = -n.normal[1];
+            n.normal[2] = -n.normal[2];
+        }
+    }
+
+    for (size_t i = 0; i < pcl_point_cloud_->size(); i++)
+    {
+        traversability_.push_back(EstimateTraversability(i) * 100);
+    }
+    for (size_t i = 0; i < pcl_point_cloud_->size(); i++)
+    {
+        if (traversability_[i] != 100)
+            continue;
+        std::vector<int> idx = FindPointsInRadius(pcl_point_cloud_->points[i], radius_);
+        for (auto j : idx)
+        {
+            if (traversability_[j] == 0)
+            {
+                traversability_[i] = 50;
+                continue;
+            }
+        }
+    }
+}
+
+
+template <typename POINT_TYPE>
+std::vector<int> CloudAnalyzer<POINT_TYPE>::FindPointsInRadius(const POINT_TYPE point, float radius)
+{
+    std::vector<int> pointIdxRadiusSearch;
+    std::vector<float> pointRadiusSquaredDistance;
+    kdtree_.radiusSearch(point, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance);
+    return pointIdxRadiusSearch;
 }
 
 template <typename POINT_TYPE>
-std::vector<int> CloudAnalyzer<POINT_TYPE>::FindNearest(const POINT_TYPE point)
+int CloudAnalyzer<POINT_TYPE>::FindNearest(const POINT_TYPE point)
 {
-
-    std::vector<int> pointIdxRadiusSearch;
-    std::vector<float> pointRadiusSquaredDistance;
-    kdtree_.radiusSearch(point, radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance);
-    return pointIdxRadiusSearch;
+    int K = 1;
+    std::vector<int> pointIdxNKNSearch(K);
+    std::vector<float> pointNKNSquaredDistance(K);
+    if (kdtree_.nearestKSearch(point, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
+    {
+        return pointIdxNKNSearch[0];
+    }
+    return -1;
 }
 
 
@@ -28,7 +77,7 @@ bool CloudAnalyzer<POINT_TYPE>::FindPointLieOnTheSurface(const Eigen::Vector3d &
     point.y = in_point.y();
     point.z = in_point.z();
 
-    std::vector<int> idx = FindNearest(point);
+    std::vector<int> idx = FindPointsInRadius(point, radius_);
     if (idx.size() < 5){
         return false;
     }
@@ -54,7 +103,7 @@ bool CloudAnalyzer<POINT_TYPE>::FindPoseLieOnTheSurface(const Eigen::Matrix4d &i
     point.y = t.y();
     point.z = t.z();
 
-    std::vector<int> idx = FindNearest(point);
+    std::vector<int> idx = FindPointsInRadius(point, radius_);
     if (idx.size() < 5)
         return false;
     Eigen::Vector4f plane_parameters;
@@ -128,6 +177,7 @@ Eigen::Vector4d CloudAnalyzer<POINT_TYPE>::FindPlaneOnCloud(const std::vector<in
 template <typename POINT_TYPE>
 bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const Eigen::Vector3d point)
 {
+    //compute the traversability for arbitrary position
     POINT_TYPE search_point;
     search_point.x = point.x();
     search_point.y = point.y();
@@ -138,45 +188,111 @@ bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const Eigen::Vector3d poi
 template <typename POINT_TYPE>
 bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const POINT_TYPE point)
 {
-    std::vector<int> idx = FindNearest(point);
+    std::vector<int> idx = FindPointsInRadius(point, radius_);
     if (idx.size() < 5)
+    {
         return false;
-    Eigen::Vector4f plane_parameters_f;
-    Eigen::Vector4d plane_parameters;
+    }
+
+    Eigen::Vector4f plane_parameters;
 
     float curvature;
-    pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters_f, curvature);
-    plane_parameters = plane_parameters_f.cast<double>();
+    pcl::computePointNormal(*pcl_point_cloud_, idx, plane_parameters, curvature);
     if (plane_parameters.z() < 0)
     {
         plane_parameters = -plane_parameters;
     }
+
     Eigen::AngleAxisd angle_axis(Eigen::Quaterniond::FromTwoVectors(
-        plane_parameters.head<3>(), Eigen::Vector3d::UnitZ()));
-        //std::cout<<"angle: "<<angle_axis.angle()<<std::endl;
+        plane_parameters.head<3>().cast<double>(), Eigen::Vector3d::UnitZ()));
     if (angle_axis.angle() > max_angle_)
         return false;
 
-    std::vector<double> dists;
+    std::vector<double> angles;
     double mean = 0;
-    
     for (auto i : idx)
     {
-        double dist = GetDistToPlane(pcl_point_cloud_->points[i], plane_parameters);
-        dists.push_back(dist);
-        mean += dist;
+        Eigen::Vector3d n(normal_->points[i].normal[0],normal_->points[i].normal[1],normal_->points[i].normal[2]);
+        Eigen::AngleAxisd angle_axis(Eigen::Quaterniond::FromTwoVectors(
+            plane_parameters.head<3>().cast<double>(), n));
+        angles.push_back(angle_axis.angle());
+        mean += angle_axis.angle();
     }
     mean /= idx.size();
 
     double var = 0;
-    for (auto dist : dists)
+    for (auto a : angles)
     {
-        var += (dist - mean) * (dist - mean);
+        var += (a - mean) * (a - mean);
     }
-    var /= dists.size();
+    var /= angles.size();
     double sd = std::sqrt(var);
-    //std::cout<<"sd:"<<sd<<std::endl;
     if (sd > max_sd_)
         return false;
+    return true;
+}
+
+
+template <typename POINT_TYPE>
+bool CloudAnalyzer<POINT_TYPE>::EstimateTraversability(const int id)
+{
+    std::vector<int> idx = FindPointsInRadius(pcl_point_cloud_->points[id], radius_);
+    if (idx.size() < 5)
+    {
+        return false;
+    }
+
+    Eigen::Vector4f plane_parameters;
+
+    Eigen::Vector3d norm(normal_->points[id].normal[0],normal_->points[id].normal[1],normal_->points[id].normal[2]);
+
+    Eigen::AngleAxisd angle_axis(Eigen::Quaterniond::FromTwoVectors(
+        norm, Eigen::Vector3d::UnitZ()));
+    if (angle_axis.angle() > max_angle_)
+        return false;
+
+    std::vector<double> angles;
+    double mean = 0;
+    for (auto i : idx)
+    {
+        Eigen::Vector3d n(normal_->points[i].normal[0],normal_->points[i].normal[1],normal_->points[i].normal[2]);
+        Eigen::AngleAxisd angle_axis(Eigen::Quaterniond::FromTwoVectors(
+            norm, n));
+        angles.push_back(angle_axis.angle());
+        mean += angle_axis.angle();
+    }
+    mean /= idx.size();
+
+    double var = 0;
+    for (auto a : angles)
+    {
+        var += (a - mean) * (a - mean);
+    }
+    var /= angles.size();
+    double sd = std::sqrt(var);
+    if (sd > max_sd_)
+        return false;
+    return true;
+}
+
+template <typename POINT_TYPE>
+bool CloudAnalyzer<POINT_TYPE>::EstimateTraversabilityLite(const Eigen::Vector3d point)
+{
+    POINT_TYPE search_point;
+    search_point.x = point.x();
+    search_point.y = point.y();
+    search_point.z = point.z();
+    return EstimateTraversabilityLite(search_point);
+}
+
+template <typename POINT_TYPE>
+bool CloudAnalyzer<POINT_TYPE>::EstimateTraversabilityLite(const POINT_TYPE point)
+{
+    int id = FindNearest(point);
+    if (id == -1)
+        return false;
+    if(traversability_[id] != 100){
+        return false;
+    }
     return true;
 }

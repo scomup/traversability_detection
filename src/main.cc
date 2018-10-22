@@ -12,6 +12,7 @@
 #include "viewer/viewer.h"
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/filters/passthrough.h>
 #include "rrt/BiRRT.h"
 #include "rrt/CloudStateSpace.h"
 #include "cloud_analyzer.h"
@@ -46,9 +47,6 @@ void ReadLas (const std::string &file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr 
 
 
 	int i=0;				// counter
-	uint16_t r1, g1, b1;	// RGB variables for .las (16-bit coded)
-	int r2, g2, b2;			// RGB variables for converted values (see below)
-	uint32_t rgb;			// "packed" RGB value for .pcd
 
     double scale = 10;
 	//double bias_x = (reader.GetPoint().GetX())/scale;
@@ -65,6 +63,8 @@ void ReadLas (const std::string &file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr 
         xyz_centroid.x() += cloud->points[i].x;
         xyz_centroid.y() += cloud->points[i].y;	
         xyz_centroid.z() += cloud->points[i].z;	
+
+
 
 		i++; // ...moving on
 	}
@@ -103,6 +103,17 @@ int main(int argc, char **argv)
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     ReadLas(filename, cloud);
 
+      // Create the filtering object
+  pcl::PassThrough<pcl::PointXYZ> filter;
+  filter.setInputCloud(cloud);
+  filter.setFilterFieldName("x");
+  filter.setFilterLimits(-100, 0);
+  filter.filter (*cloud);
+  filter.setFilterFieldName("y");
+  filter.setFilterLimits(-100, 0);
+  filter.filter (*cloud);
+
+
     auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(cloud);
     auto drawer_for_cloud_analyzer = std::make_shared<DrawerForCloudAnalyzer>(cloud_analyzer);
     viewer->SetCloudDrawer(drawer_for_cloud_analyzer);
@@ -121,8 +132,8 @@ int main(int argc, char **argv)
     bi_rrt->setGoalState(Eigen::Vector3d(-98, 0, -2.3));
     bi_rrt->setMaxStepSize(30);
     bi_rrt->setGoalMaxDist(0.5);
-    bi_rrt->setStepSize(1);
-    bi_rrt->setMaxIterations(100000);
+    bi_rrt->setStepSize(0.5);
+    bi_rrt->setMaxIterations(1e6);
 
     //RRT::VoxeltateSpace<Eigen::Vector3d> state_space(bounds);
     //auto _biRRT = std::make_unique<BiRRT<Eigen::Vector3d>>(_stateSpace, RRT::hash, dimensions);

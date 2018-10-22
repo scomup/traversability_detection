@@ -15,20 +15,29 @@ public:
   DrawerForCloudAnalyzer(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
   : cloud_analyzer_(cloud_analyzer){};
 
-  void DrawPoint()
+  void DrawPoint(bool mode = 0)
   {
     if (cloud_analyzer_->pcl_point_cloud_ == nullptr)
       return;
     glPointSize(3);
     glBegin(GL_POINTS);
 
-    for (const auto &point : *cloud_analyzer_->pcl_point_cloud_)
+    for (size_t i = 0; i < cloud_analyzer_->pcl_point_cloud_->size(); i++)
     {
-      pangolin::glColorHSV( std::abs(point.z * 20));
+      pcl::PointXYZ& point = cloud_analyzer_->pcl_point_cloud_->points[i];
+      if (mode == 0){
+        pangolin::glColorHSV(std::abs(point.z * 20));
+      }
+      else if (mode == 1){
+        //bool t = cloud_analyzer_->traversability_[i];
+        pangolin::glColorHSV(cloud_analyzer_->traversability_[i]);
+      }
       glVertex3f(point.x, point.y, point.z);
     }
+
     glEnd();
   }
+
 
   void DrawPlane(const Eigen::Vector3d point, const GLfloat radius, const Eigen::Vector3d normal)
   {
@@ -72,7 +81,7 @@ public:
     search_point.x = pose(0, 3);
     search_point.y = pose(1, 3);
     search_point.z = pose(2, 3);
-    std::vector<int> idx = cloud_analyzer_->FindNearest(search_point);
+    std::vector<int> idx = cloud_analyzer_->FindPointsInRadius(search_point, cloud_analyzer_->radius_);
     cloud_analyzer_->EstimateTraversability(search_point);
     for (auto i : idx)
     {
@@ -97,7 +106,6 @@ public:
     search_point.y = projected_point.y();
     search_point.z = projected_point.z();
 
-    auto dist2 = cloud_analyzer_->GetDistToPlane(search_point, plane_on_points);
     glColor3f(0, 0, 1);
     glPointSize(20);
     glBegin(GL_POINTS);

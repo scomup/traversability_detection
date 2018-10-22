@@ -237,6 +237,7 @@ GLint DrawPlane(Eigen::Vector3d point, GLfloat radius, Eigen::Vector3d normal)
     }
     glEnd();
     glPopMatrix();
+    return 0;
 }
 
 #endif //SAMPLE_CARTO_TOP_VIEWER_DRAW_OBJECT_HELPER_H_

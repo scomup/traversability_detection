@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/traversability_detection",
-            "args": [],
+            "args": ["~/bag/las/grove.las"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

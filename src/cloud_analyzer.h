@@ -35,26 +35,36 @@ public:
 
   bool EstimateTraversability(const Eigen::Vector3d point);
 
+    bool EstimateTraversabilityLite(const POINT_TYPE point);
+
+  bool EstimateTraversabilityLite(const Eigen::Vector3d point);
+
+
   const typename pcl::PointCloud<POINT_TYPE>::Ptr getcloud(){return pcl_point_cloud_;};
 
 
 private:
+  bool EstimateTraversability(const int id);
 
-  std::vector<int> FindNearest(const POINT_TYPE point);
+  int FindNearest(const POINT_TYPE point);
+
+  std::vector<int> FindPointsInRadius(const POINT_TYPE point, float radius);
 
   Eigen::Vector4d FindPlane(const POINT_TYPE point,
                             const Eigen::Vector3d &normal_vector);
 
   Eigen::Vector4d FindPlaneOnCloud(const std::vector<int> &idx,
-                            const Eigen::Vector4d &plane);
+                                   const Eigen::Vector4d &plane);
 
   double GetDistToPlane(const POINT_TYPE point,
                         const Eigen::Vector4d &plane);
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr pcl_point_cloud_;
   typename pcl::KdTreeFLANN<POINT_TYPE> kdtree_;
-  double max_angle_ = M_PI / 3;
-  double max_sd_ = 0.05;
+  pcl::PointCloud<pcl::Normal>::Ptr normal_;
+  std::vector<uint8_t> traversability_;
+  double max_angle_ = M_PI/6;
+  double max_sd_ = 0.1;
   double radius_ = 0.3;
 };
 

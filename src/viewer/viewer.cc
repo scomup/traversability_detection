@@ -92,7 +92,7 @@ void Viewer::Run()
         //GetObjectCoordinates(const OpenGlRenderState &cam_state, double winx, double winy, double winzdepth, GLdouble &x, GLdouble &y, GLdouble &z) const;
 
         if(drawer_for_cloud_analyzer_ != nullptr){
-            drawer_for_cloud_analyzer_->DrawPoint();
+            drawer_for_cloud_analyzer_->DrawPoint(1);
             //drawer_for_cloud_analyzer_->DrawObj(pose_);
         }
 
@@ -144,7 +144,7 @@ void Viewer::Run()
             glEnd();
 
             glLineWidth(5);
-            glColor3f(0.0f, 1.0f, 0.0f);
+            glColor3f(0.5f, 0.0f, 0.5f);
             for (const auto &node : start_tree.allNodes())
             {
                 if (node.parent())
