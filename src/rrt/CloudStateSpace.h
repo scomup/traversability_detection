@@ -6,7 +6,7 @@
 #include "VoxelStateSpace.h"
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
-#include "../drawer_for_cloud_analyzer.h"
+#include "../cloud_analyzer.h"
 
 
 namespace RRT {

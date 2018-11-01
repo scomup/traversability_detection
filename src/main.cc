@@ -16,7 +16,8 @@
 #include "rrt/BiRRT.h"
 #include "rrt/CloudStateSpace.h"
 #include "cloud_analyzer.h"
-#include "drawer_for_cloud_analyzer.h"
+#include "viewer/handler_for_cloud_analyzer.h"
+#include "viewer/handler_for_BiRRT.h"
 
 
 
@@ -115,8 +116,8 @@ int main(int argc, char **argv)
 
 
     auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(cloud);
-    auto drawer_for_cloud_analyzer = std::make_shared<DrawerForCloudAnalyzer>(cloud_analyzer);
-    viewer->SetCloudDrawer(drawer_for_cloud_analyzer);
+    auto handler_for_cloud_analyzer = std::make_shared<HandlerForCloudAnalyzer>(cloud_analyzer);
+    viewer->SetCloudDrawer(handler_for_cloud_analyzer);
     auto state_space = std::make_shared<RRT::CloudStateSpace>(cloud_analyzer);
     auto bi_rrt = std::make_shared<RRT::BiRRT<Eigen::Vector3d>>(
         state_space, 
@@ -126,19 +127,13 @@ int main(int argc, char **argv)
             boost::hash_combine(seed, state.z());
             return seed; },
         3);
-
-    bi_rrt->setStartState(Eigen::Vector3d(5, -19, -0.2));
-    //bi_rrt->setGoalState(Eigen::Vector3d(42, -65, 2.3));
-    bi_rrt->setGoalState(Eigen::Vector3d(-98, 0, -2.3));
     bi_rrt->setMaxStepSize(30);
     bi_rrt->setGoalMaxDist(0.5);
     bi_rrt->setStepSize(0.5);
     bi_rrt->setMaxIterations(1e6);
+    auto handler_for_rrt = std::make_shared<HandlerForBiRRT>(bi_rrt);
 
-    //RRT::VoxeltateSpace<Eigen::Vector3d> state_space(bounds);
-    //auto _biRRT = std::make_unique<BiRRT<Eigen::Vector3d>>(_stateSpace, RRT::hash, dimensions);
-    viewer->SetRRT(bi_rrt);
-    //bi_rrt->run();
+    viewer->SetRRTHandler(handler_for_rrt);
 
     viewer_thread.join();
     

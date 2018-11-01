@@ -3,27 +3,37 @@
 #include <limits.h>
 #include "Tree.h"
 
-namespace RRT {
+namespace RRT
+{
 /**
  * @brief Bi-directional RRT
  * @details It is often preferable to use two RRTs when searching the state
  *     space with one rooted at the source and one rooted at the goal.  When the
  *     two trees intersect, a solution has been found.
  */
+class HandlerBiRRT;
+
 template <typename T>
-class BiRRT {
-public:
+class BiRRT
+{
+
+    friend class HandlerBiRRT;
+
+  public:
     BiRRT(std::shared_ptr<StateSpace<T>> stateSpace,
           std::function<size_t(T)> hash, int dimensions,
-          std::function<T(double*)> arrayToT = NULL,
-          std::function<void(T, double*)> TToArray = NULL)
+          std::function<T(double *)> arrayToT = NULL,
+          std::function<void(T, double *)> TToArray = NULL)
         : _startTree(stateSpace, hash, dimensions, arrayToT, TToArray),
-          _goalTree(stateSpace, hash, dimensions, arrayToT, TToArray) {
+          _goalTree(stateSpace, hash, dimensions, arrayToT, TToArray)
+    {
         _minIterations = 0;
+        running_ = false;
         reset();
     }
 
-    void reset() {
+    void reset()
+    {
         _startTree.reset();
         _goalTree.reset();
 
@@ -34,23 +44,26 @@ public:
         _solutionLength = INT_MAX;
     }
 
-    const Tree<T>& startTree() const { return _startTree; }
-    const Tree<T>& goalTree() const { return _goalTree; }
+    const Tree<T> &startTree() const { return _startTree; }
+    const Tree<T> &goalTree() const { return _goalTree; }
 
     bool isASCEnabled() const { return _startTree.isASCEnabled(); }
-    void setASCEnabled(bool checked) {
+    void setASCEnabled(bool checked)
+    {
         _startTree.setASCEnabled(checked);
         _goalTree.setASCEnabled(checked);
     }
 
     double goalBias() const { return _startTree.goalBias(); }
-    void setGoalBias(double goalBias) {
+    void setGoalBias(double goalBias)
+    {
         _startTree.setGoalBias(goalBias);
         _goalTree.setGoalBias(goalBias);
     }
 
     int maxIterations() const { return _startTree.maxIterations(); }
-    void setMaxIterations(int itr) {
+    void setMaxIterations(int itr)
+    {
         _startTree.setMaxIterations(itr);
         _goalTree.setMaxIterations(itr);
     }
@@ -66,31 +79,36 @@ public:
     void setMinIterations(int itr) { _minIterations = itr; }
 
     double waypointBias() const { return _startTree.waypointBias(); }
-    void setWaypointBias(double waypointBias) {
+    void setWaypointBias(double waypointBias)
+    {
         _startTree.setWaypointBias(waypointBias);
         _goalTree.setWaypointBias(waypointBias);
     }
 
-    const std::vector<T>& waypoints() { return _startTree.waypoints(); }
-    void setWaypoints(const std::vector<T>& waypoints) {
+    const std::vector<T> &waypoints() { return _startTree.waypoints(); }
+    void setWaypoints(const std::vector<T> &waypoints)
+    {
         _startTree.setWaypoints(waypoints);
         _goalTree.setWaypoints(waypoints);
     }
 
     double stepSize() const { return _startTree.stepSize(); }
-    void setStepSize(double stepSize) {
+    void setStepSize(double stepSize)
+    {
         _startTree.setStepSize(stepSize);
         _goalTree.setStepSize(stepSize);
     }
 
     double maxStepSize() const { return _startTree.maxStepSize(); }
-    void setMaxStepSize(double stepSize) {
+    void setMaxStepSize(double stepSize)
+    {
         _startTree.setMaxStepSize(stepSize);
         _goalTree.setMaxStepSize(stepSize);
     }
 
     double goalMaxDist() const { return _startTree.goalMaxDist(); }
-    void setGoalMaxDist(double maxDist) {
+    void setGoalMaxDist(double maxDist)
+    {
         _startTree.setGoalMaxDist(maxDist);
         _goalTree.setGoalMaxDist(maxDist);
     }
@@ -98,7 +116,8 @@ public:
     /**
      * @brief Get the shortest path from the start to the goal
      */
-    std::vector<T> getPath() {
+    std::vector<T> getPath()
+    {
         std::vector<T> path;
         _startTree.getPath(&path, _startSolutionNode);
         _startTree.getPath(&path, _goalSolutionNode, true);
@@ -112,29 +131,34 @@ public:
      * store
      * it instead.
      */
-    void grow() {
+    void grow()
+    {
         int depth;
-        const Node<T>* otherNode;
+        const Node<T> *otherNode;
 
-        Node<T>* newStartNode = _startTree.grow();
-        if (newStartNode) {
+        Node<T> *newStartNode = _startTree.grow();
+        if (newStartNode)
+        {
             otherNode = _findBestPath(newStartNode->state(), _goalTree, &depth);
 
             if (otherNode && depth + newStartNode->depth() < _solutionLength &&
                 _goalTree.stateSpace().transitionValid(newStartNode->state(),
-                                                       otherNode->state())) {
+                                                       otherNode->state()))
+            {
                 _startSolutionNode = newStartNode;
                 _goalSolutionNode = otherNode;
                 _solutionLength = newStartNode->depth() + depth;
             }
         }
 
-        Node<T>* newGoalNode = _goalTree.grow();
-        if (newGoalNode) {
+        Node<T> *newGoalNode = _goalTree.grow();
+        if (newGoalNode)
+        {
             otherNode = _findBestPath(newGoalNode->state(), _startTree, &depth);
             if (otherNode && depth + newGoalNode->depth() < _solutionLength &&
                 _goalTree.stateSpace().transitionValid(newGoalNode->state(),
-                                                       otherNode->state())) {
+                                                       otherNode->state()))
+            {
                 _startSolutionNode = otherNode;
                 _goalSolutionNode = newGoalNode;
                 _solutionLength = newGoalNode->depth() + depth;
@@ -148,39 +172,50 @@ public:
      * @brief Grows the trees until we find a solution or run out of iterations.
      * @return true if a solution is found
      */
-    bool run() {
-        for (int i = 0; i < _startTree.maxIterations(); i++) {
+    bool run()
+    {
+        if(running_ == true)
+            return false;
+        running_ = true;
+        for (int i = 0; i < _startTree.maxIterations(); i++)
+        {
             grow();
-            std::cout<<i<<std::endl;
-            if (_startSolutionNode != nullptr && i >= minIterations())
+            std::cout << i << std::endl;
+            if (_startSolutionNode != nullptr && i >= minIterations()){
+                running_ = false;
                 return true;
+            }
         }
+        running_ = false;
         return false;
     }
 
-    void setStartState(const T& start) {
+    void setStartState(const T &start)
+    {
         _startTree.setStartState(start);
         _goalTree.setGoalState(start);
     }
-    const T& startState() const { return _startTree.startState(); }
+    const T &startState() const { return _startTree.startState(); }
 
-    void setGoalState(const T& goal) {
+    void setGoalState(const T &goal)
+    {
         _startTree.setGoalState(goal);
         _goalTree.setStartState(goal);
     }
-    const T& goalState() const { return _startTree.goalState(); }
+    const T &goalState() const { return _startTree.goalState(); }
 
-    const Node<T>* startSolutionNode() { return _startSolutionNode; }
+    const Node<T> *startSolutionNode() { return _startSolutionNode; }
 
-    const Node<T>* goalSolutionNode() { return _goalSolutionNode; }
+    const Node<T> *goalSolutionNode() { return _goalSolutionNode; }
 
     int iterationCount() const { return _iterationCount; }
 
-protected:
-    const Node<T>* _findBestPath(const T& targetState, Tree<T>& treeToSearch,
-                                 int* depthOut) const {
-        const Node<T>* node = treeToSearch.nearest(targetState);
-        const Node<T>* bestNode = nullptr; 
+  protected:
+    const Node<T> *_findBestPath(const T &targetState, Tree<T> &treeToSearch,
+                                 int *depthOut) const
+    {
+        const Node<T> *node = treeToSearch.nearest(targetState);
+        const Node<T> *bestNode = nullptr;
         int depth = INT_MAX;
 
         while (node != nullptr)
@@ -196,12 +231,14 @@ protected:
             node = node->parent();
         }
 
-        if (depthOut) *depthOut = depth;
+        if (depthOut)
+            *depthOut = depth;
 
         return bestNode;
     }
 
-private:
+  private:
+    bool running_;
     Tree<T> _startTree;
     Tree<T> _goalTree;
 
@@ -209,7 +246,7 @@ private:
     int _minIterations;
 
     int _solutionLength;
-    const Node<T>* _startSolutionNode, *_goalSolutionNode;
+    const Node<T> *_startSolutionNode, *_goalSolutionNode;
 };
 
-}  // namespace RRT
+} // namespace RRT

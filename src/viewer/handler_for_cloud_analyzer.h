@@ -1,18 +1,18 @@
-#ifndef drawer_for_cloud_analyzer_H_
-#define drawer_for_cloud_analyzer_H_
+#ifndef HANDLER_FOR_CLOUD_ANALYZER_H_
+#define HANDLER_FOR_CLOUD_ANALYZER_H_
 
 #include <memory>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <pangolin/pangolin.h>
 
-#include "cloud_analyzer.h"
+#include "../cloud_analyzer.h"
 
 
-class DrawerForCloudAnalyzer
+class HandlerForCloudAnalyzer
 {
 public:
-  DrawerForCloudAnalyzer(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
+  HandlerForCloudAnalyzer(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
   : cloud_analyzer_(cloud_analyzer){};
 
   void DrawPoint(bool mode = 0)
@@ -129,4 +129,4 @@ private:
   std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer_;
 };
 
-#endif // drawer_for_cloud_analyzer_H_
+#endif // HANDLER_FOR_CLOUD_ANALYZER_H_

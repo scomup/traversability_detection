@@ -31,7 +31,9 @@
 #include "pcl/point_types.h"
 #include "pcl_conversions/pcl_conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
-#include "../drawer_for_cloud_analyzer.h"
+#include "handler_for_cloud_analyzer.h"
+#include "handler_for_BiRRT.h"
+
 #include "../rrt/BiRRT.h"
 
 
@@ -46,13 +48,11 @@ public:
     void Run();
 
     void SetFinish();
-    void SetCloudDrawer(std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer);
-    void SetRRT(std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt){rrt_ = rrt;};
+    void SetCloudDrawer(std::shared_ptr<HandlerForCloudAnalyzer> hander_for_cloud_analyzer);
+    void SetRRTHandler(std::shared_ptr<HandlerForBiRRT> rrt){handler_for_rrt_ = rrt;};
     bool isFinished(){return finish_;};
 
 private:
-    void RunRRT();
-
     double t_;
     double image_width_;
     double image_height_;
@@ -68,9 +68,8 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud_;
     Eigen::Matrix4d pose_;
     std::mutex mutex_frame_;
-    std::shared_ptr<DrawerForCloudAnalyzer> drawer_for_cloud_analyzer_;
-    std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt_;
-
+    std::shared_ptr<HandlerForCloudAnalyzer> handler_for_cloud_analyzer_;
+    std::shared_ptr<HandlerForBiRRT> handler_for_rrt_;
     Eigen::Vector3d start_ = Eigen::Vector3d(0,0,0);
     Eigen::Vector3d goal_ = Eigen::Vector3d(0,0,0);
 
