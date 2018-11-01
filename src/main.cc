@@ -127,7 +127,6 @@ int main(int argc, char **argv)
             boost::hash_combine(seed, state.z());
             return seed; },
         3);
-    bi_rrt->setMaxStepSize(30);
     bi_rrt->setGoalMaxDist(0.5);
     bi_rrt->setStepSize(0.5);
     bi_rrt->setMaxIterations(1e6);

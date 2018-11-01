@@ -2,6 +2,8 @@
 
 #include <limits.h>
 #include "Tree.h"
+#include "path_optimizer.h"
+
 
 namespace RRT
 {
@@ -21,51 +23,49 @@ class BiRRT
 
   public:
     BiRRT(std::shared_ptr<StateSpace<T>> stateSpace,
-          std::function<size_t(T)> hash, int dimensions,
-          std::function<T(double *)> arrayToT = NULL,
-          std::function<void(T, double *)> TToArray = NULL)
-        : _startTree(stateSpace, hash, dimensions, arrayToT, TToArray),
-          _goalTree(stateSpace, hash, dimensions, arrayToT, TToArray)
+          std::function<size_t(T)> hash, int dimensions)
+        : startTree_(stateSpace, hash, dimensions),
+          goalTree_(stateSpace, hash, dimensions)
     {
-        _minIterations = 0;
+        minIterations_ = 0;
         running_ = false;
         reset();
     }
 
     void reset()
     {
-        _startTree.reset();
-        _goalTree.reset();
+        startTree_.reset();
+        goalTree_.reset();
 
-        _iterationCount = 0;
+        iterationCount_ = 0;
 
-        _startSolutionNode = nullptr;
-        _goalSolutionNode = nullptr;
-        _solutionLength = INT_MAX;
+        startSolutionNode_ = nullptr;
+        goalSolutionNode_ = nullptr;
+        solutionLength_ = INT_MAX;
     }
 
-    const Tree<T> &startTree() const { return _startTree; }
-    const Tree<T> &goalTree() const { return _goalTree; }
+    const Tree<T> &startTree() const { return startTree_; }
+    const Tree<T> &goalTree() const { return goalTree_; }
 
-    bool isASCEnabled() const { return _startTree.isASCEnabled(); }
+    bool isASCEnabled() const { return startTree_.isASCEnabled(); }
     void setASCEnabled(bool checked)
     {
-        _startTree.setASCEnabled(checked);
-        _goalTree.setASCEnabled(checked);
+        startTree_.setASCEnabled(checked);
+        goalTree_.setASCEnabled(checked);
     }
 
-    double goalBias() const { return _startTree.goalBias(); }
+    double goalBias() const { return startTree_.goalBias(); }
     void setGoalBias(double goalBias)
     {
-        _startTree.setGoalBias(goalBias);
-        _goalTree.setGoalBias(goalBias);
+        startTree_.setGoalBias(goalBias);
+        goalTree_.setGoalBias(goalBias);
     }
 
-    int maxIterations() const { return _startTree.maxIterations(); }
+    int maxIterations() const { return startTree_.maxIterations(); }
     void setMaxIterations(int itr)
     {
-        _startTree.setMaxIterations(itr);
-        _goalTree.setMaxIterations(itr);
+        startTree_.setMaxIterations(itr);
+        goalTree_.setMaxIterations(itr);
     }
 
     /**
@@ -75,42 +75,30 @@ class BiRRT
      * finds. Setting this to a higher value can allow the tree to search for
      * longer in order to find a better path.
      */
-    int minIterations() const { return _minIterations; }
-    void setMinIterations(int itr) { _minIterations = itr; }
+    int minIterations() const { return minIterations_; }
+    void setMinIterations(int itr) { minIterations_ = itr; }
 
-    double waypointBias() const { return _startTree.waypointBias(); }
+    double waypointBias() const { return startTree_.waypointBias(); }
     void setWaypointBias(double waypointBias)
     {
-        _startTree.setWaypointBias(waypointBias);
-        _goalTree.setWaypointBias(waypointBias);
+        startTree_.setWaypointBias(waypointBias);
+        goalTree_.setWaypointBias(waypointBias);
     }
 
-    const std::vector<T> &waypoints() { return _startTree.waypoints(); }
-    void setWaypoints(const std::vector<T> &waypoints)
-    {
-        _startTree.setWaypoints(waypoints);
-        _goalTree.setWaypoints(waypoints);
-    }
 
-    double stepSize() const { return _startTree.stepSize(); }
+    double stepSize() const { return startTree_.stepSize(); }
     void setStepSize(double stepSize)
     {
-        _startTree.setStepSize(stepSize);
-        _goalTree.setStepSize(stepSize);
+        startTree_.setStepSize(stepSize);
+        goalTree_.setStepSize(stepSize);
     }
 
-    double maxStepSize() const { return _startTree.maxStepSize(); }
-    void setMaxStepSize(double stepSize)
-    {
-        _startTree.setMaxStepSize(stepSize);
-        _goalTree.setMaxStepSize(stepSize);
-    }
 
-    double goalMaxDist() const { return _startTree.goalMaxDist(); }
+    double goalMaxDist() const { return startTree_.goalMaxDist(); }
     void setGoalMaxDist(double maxDist)
     {
-        _startTree.setGoalMaxDist(maxDist);
-        _goalTree.setGoalMaxDist(maxDist);
+        startTree_.setGoalMaxDist(maxDist);
+        goalTree_.setGoalMaxDist(maxDist);
     }
 
     /**
@@ -119,8 +107,8 @@ class BiRRT
     std::vector<T> getPath()
     {
         std::vector<T> path;
-        _startTree.getPath(&path, _startSolutionNode);
-        _startTree.getPath(&path, _goalSolutionNode, true);
+        startTree_.getPath(&path, startSolutionNode_);
+        startTree_.getPath(&path, goalSolutionNode_, true);
         return path;
     }
 
@@ -136,36 +124,36 @@ class BiRRT
         int depth;
         const Node<T> *otherNode;
 
-        Node<T> *newStartNode = _startTree.grow();
+        Node<T> *newStartNode = startTree_.grow();
         if (newStartNode)
         {
-            otherNode = _findBestPath(newStartNode->state(), _goalTree, &depth);
+            otherNode = findBestPath(newStartNode->state(), goalTree_, &depth);
 
-            if (otherNode && depth + newStartNode->depth() < _solutionLength &&
-                _goalTree.stateSpace().transitionValid(newStartNode->state(),
+            if (otherNode && depth + newStartNode->depth() < solutionLength_ &&
+                goalTree_.stateSpace().transitionValid(newStartNode->state(),
                                                        otherNode->state()))
             {
-                _startSolutionNode = newStartNode;
-                _goalSolutionNode = otherNode;
-                _solutionLength = newStartNode->depth() + depth;
+                startSolutionNode_ = newStartNode;
+                goalSolutionNode_ = otherNode;
+                solutionLength_ = newStartNode->depth() + depth;
             }
         }
 
-        Node<T> *newGoalNode = _goalTree.grow();
+        Node<T> *newGoalNode = goalTree_.grow();
         if (newGoalNode)
         {
-            otherNode = _findBestPath(newGoalNode->state(), _startTree, &depth);
-            if (otherNode && depth + newGoalNode->depth() < _solutionLength &&
-                _goalTree.stateSpace().transitionValid(newGoalNode->state(),
+            otherNode = findBestPath(newGoalNode->state(), startTree_, &depth);
+            if (otherNode && depth + newGoalNode->depth() < solutionLength_ &&
+                goalTree_.stateSpace().transitionValid(newGoalNode->state(),
                                                        otherNode->state()))
             {
-                _startSolutionNode = otherNode;
-                _goalSolutionNode = newGoalNode;
-                _solutionLength = newGoalNode->depth() + depth;
+                startSolutionNode_ = otherNode;
+                goalSolutionNode_ = newGoalNode;
+                solutionLength_ = newGoalNode->depth() + depth;
             }
         }
 
-        ++_iterationCount;
+        ++iterationCount_;
     }
 
     /**
@@ -177,11 +165,11 @@ class BiRRT
         if(running_ == true)
             return false;
         running_ = true;
-        for (int i = 0; i < _startTree.maxIterations(); i++)
+        for (int i = 0; i < startTree_.maxIterations(); i++)
         {
             grow();
             std::cout << i << std::endl;
-            if (_startSolutionNode != nullptr && i >= minIterations()){
+            if (startSolutionNode_ != nullptr && i >= minIterations()){
                 running_ = false;
                 return true;
             }
@@ -192,26 +180,26 @@ class BiRRT
 
     void setStartState(const T &start)
     {
-        _startTree.setStartState(start);
-        _goalTree.setGoalState(start);
+        startTree_.setStartState(start);
+        goalTree_.setGoalState(start);
     }
-    const T &startState() const { return _startTree.startState(); }
+    const T &startState() const { return startTree_.startState(); }
 
     void setGoalState(const T &goal)
     {
-        _startTree.setGoalState(goal);
-        _goalTree.setStartState(goal);
+        startTree_.setGoalState(goal);
+        goalTree_.setStartState(goal);
     }
-    const T &goalState() const { return _startTree.goalState(); }
+    const T &goalState() const { return startTree_.goalState(); }
 
-    const Node<T> *startSolutionNode() { return _startSolutionNode; }
+    const Node<T> *startSolutionNode() { return startSolutionNode_; }
 
-    const Node<T> *goalSolutionNode() { return _goalSolutionNode; }
+    const Node<T> *goalSolutionNode() { return goalSolutionNode_; }
 
-    int iterationCount() const { return _iterationCount; }
+    int iterationCount() const { return iterationCount_; }
 
   protected:
-    const Node<T> *_findBestPath(const T &targetState, Tree<T> &treeToSearch,
+    const Node<T> *findBestPath(const T &targetState, Tree<T> &treeToSearch,
                                  int *depthOut) const
     {
         const Node<T> *node = treeToSearch.nearest(targetState);
@@ -220,7 +208,7 @@ class BiRRT
 
         while (node != nullptr)
         {
-            double dist = _startTree.stateSpace().distance(node->state(), targetState);
+            double dist = startTree_.stateSpace().distance(node->state(), targetState);
 
             if (dist < goalMaxDist() && node->depth() < depth &&
                 treeToSearch.stateSpace().transitionValid(targetState, node->state()))
@@ -239,14 +227,14 @@ class BiRRT
 
   private:
     bool running_;
-    Tree<T> _startTree;
-    Tree<T> _goalTree;
+    Tree<T> startTree_;
+    Tree<T> goalTree_;
 
-    int _iterationCount;
-    int _minIterations;
+    int iterationCount_;
+    int minIterations_;
 
-    int _solutionLength;
-    const Node<T> *_startSolutionNode, *_goalSolutionNode;
+    int solutionLength_;
+    const Node<T> *startSolutionNode_, *goalSolutionNode_;
 };
 
 } // namespace RRT
