@@ -20,6 +20,8 @@ public:
         if (parent_)
         {
             parent_->children_.push_back(this);
+            T diff = (state_ - parent_->state());
+            cost_ = parent_->cost() + diff.norm();
         }
         for (int i = 0; i < dimensions; i++)
         {
@@ -50,6 +52,8 @@ public:
     const T& state() const { return state_; }
 
     std::vector<double>* coordinates() { return &vec_; }
+
+    const double& cost() { return cost_; }
 
 private:
     std::vector<double> vec_;

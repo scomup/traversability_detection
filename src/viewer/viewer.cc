@@ -82,17 +82,17 @@ void Viewer::Run()
         pangolin::glDrawAxis(1);
         //DrawGrid(200,1);
 
-        if (handler_for_cloud_analyzer_ != nullptr)
+        if (cloud_analyzer_handle_ != nullptr)
         {
             if (menuOriginalMap == true)
             {
-                handler_for_cloud_analyzer_->DrawPoint(0);
+                cloud_analyzer_handle_->DrawPoint(0);
             }
             else
             {
-                handler_for_cloud_analyzer_->DrawPoint(1);
+                cloud_analyzer_handle_->DrawPoint(1);
             }
-            //handler_for_cloud_analyzer_->DrawObj(pose_);
+            //cloud_analyzer_handle_->DrawObj(pose_);
         }
 
         if (handler_for_rrt_ != nullptr)
@@ -121,6 +121,6 @@ void Viewer::SetFinish()
 }
 
 
-void Viewer::SetCloudDrawer(std::shared_ptr<HandlerForCloudAnalyzer> hander_for_cloud_analyzer){
-    handler_for_cloud_analyzer_ = hander_for_cloud_analyzer;
+void Viewer::SetCloudDrawer(std::shared_ptr<CloudAnalyzerHandle> cloud_analyzer_handle){
+    cloud_analyzer_handle_ = cloud_analyzer_handle;
 }

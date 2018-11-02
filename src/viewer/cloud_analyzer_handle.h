@@ -9,10 +9,10 @@
 #include "../cloud_analyzer.h"
 
 
-class HandlerForCloudAnalyzer
+class CloudAnalyzerHandle
 {
 public:
-  HandlerForCloudAnalyzer(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
+  CloudAnalyzerHandle(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
   : cloud_analyzer_(cloud_analyzer){};
 
   void DrawPoint(bool mode = 0)

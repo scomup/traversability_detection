@@ -1,5 +1,5 @@
-#ifndef HANDLER_FOR_BIRRT_H_
-#define HANDLER_FOR_BIRRT_H_
+#ifndef HANDLER_FOR_PLANNER_H_
+#define HANDLER_FOR_PLANNER_H_
 
 #include <memory>
 #include <Eigen/Core>
@@ -10,14 +10,29 @@
 #include <thread>
 
 #include "../rrt/BiRRT.h"
+#include "../rrt/path_optimizer.h"
 
 
 
-class HandlerForBiRRT
+
+class PlannerHandle
 {
 public:
-  HandlerForBiRRT(std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt) 
-  : rrt_(rrt){};
+  PlannerHandle(std::shared_ptr<RRT::StateSpace<Eigen::Vector3d>> state_space) {
+    rrt_ = std::make_shared<RRT::BiRRT<Eigen::Vector3d>>(
+        state_space,
+        [](Eigen::Vector3d state) { size_t seed = 0;
+            boost::hash_combine(seed, state.x());
+            boost::hash_combine(seed, state.y());
+            boost::hash_combine(seed, state.z());
+            return seed; },
+        3);
+    rrt_->setGoalMaxDist(0.5);
+    rrt_->setStepSize(0.5);
+    rrt_->setMaxIterations(1e6);
+
+    //path_opt_ = make()
+  };
 
 
   std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> GetRRT(){return rrt_;};
@@ -36,7 +51,7 @@ public:
     rrt_->reset();
     rrt_->setStartState(start_);
     rrt_->setGoalState(goal_);
-    run_rrt_ =  new std::thread(&HandlerForBiRRT::RunRRT, this);
+    run_rrt_ =  new std::thread(&PlannerHandle::RunRRT, this);
   }
 
   void DrawStart() const
@@ -145,6 +160,7 @@ private:
 }
 
   std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt_;
+  //std::shared_ptr<RRT::PathOptimizer> path_opt_;
   Eigen::Vector3d start_;
   Eigen::Vector3d goal_;
   std::thread* run_rrt_;

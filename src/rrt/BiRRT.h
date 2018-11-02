@@ -2,7 +2,6 @@
 
 #include <limits.h>
 #include "Tree.h"
-#include "path_optimizer.h"
 
 
 namespace RRT
@@ -13,13 +12,13 @@ namespace RRT
  *     space with one rooted at the source and one rooted at the goal.  When the
  *     two trees intersect, a solution has been found.
  */
-class HandlerBiRRT;
+class PlannerHandle;
 
 template <typename T>
 class BiRRT
 {
 
-    friend class HandlerBiRRT;
+    friend class PlannerHandle;
 
   public:
     BiRRT(std::shared_ptr<StateSpace<T>> stateSpace,

@@ -55,7 +55,7 @@ namespace RRT {
  *    tree->setGoalState(g);
  *
  * 3) (Optional) If adaptive stepsize control is enabled:
- *    state_Space->setMaxStepSize sets the maximum stepsize the tree can take
+ *    stateSpace_->setMaxStepSize sets the maximum stepsize the tree can take
  * for any step.
  *
  * 4) Run the RRT algorithm!  This can be done in one of two ways:
@@ -84,7 +84,7 @@ public:
           dimensions_(dimensions),
           kdtree_(flann::KDTreeSingleIndexParams())
             {
-        state_Space = stateSpace;
+        stateSpace_ = stateSpace;
 
         //  default values
         setStepSize(0.1);
@@ -92,8 +92,8 @@ public:
         setGoalMaxDist(0.1);
     }
 
-    StateSpace<T>& stateSpace() { return *state_Space; }
-    const StateSpace<T>& stateSpace() const { return *state_Space; }
+    StateSpace<T>& stateSpace() { return *stateSpace_; }
+    const StateSpace<T>& stateSpace() const { return *stateSpace_; }
 
     /**
      * The maximum number of random states in the state-space that we will
@@ -130,7 +130,7 @@ public:
             Node<T>* newNode = grow();
 
             if (newNode &&
-                state_Space->distance(newNode->state(), goalState_) <
+                stateSpace_->distance(newNode->state(), goalState_) <
                     goalMaxDist_)
                 return true;
         }
@@ -172,7 +172,7 @@ public:
     {
         //  extend towards goal, waypoint, or random state depending on the
         //  biases and a random number
-        return extend(state_Space->randomState());
+        return extend(stateSpace_->randomState());
     }
 
     /**
@@ -195,7 +195,7 @@ public:
         kdtree_.knnSearch(query, indices, dists, 1, flann::SearchParams());
 
         if (distanceOut)
-            *distanceOut = state_Space->distance(state, best->state());
+            *distanceOut = stateSpace_->distance(state, best->state());
 
         T point;
         point = (T)kdtree_.getPoint(indices[0][0]);
@@ -224,12 +224,12 @@ public:
         //  should take a step in that direction, but not go all the way unless
         //  the they're really close together.
         T intermediateState;
-        intermediateState = state_Space->intermediateState(
+        intermediateState = stateSpace_->intermediateState(
             source->state(), target, stepSize());
 
         //  Make sure there's actually a direct path from @source to
         //  @intermediateState.  If not, abort
-        if (!state_Space->transitionValid(source->state(), intermediateState)) {
+        if (!stateSpace_->transitionValid(source->state(), intermediateState)) {
             return nullptr;
         }
 
@@ -373,6 +373,6 @@ protected:
 
     flann::Index<flann::L2_Simple<double>> kdtree_;
 
-    std::shared_ptr<StateSpace<T>> state_Space{};
+    std::shared_ptr<StateSpace<T>> stateSpace_;
 };
 }  // namespace RRT

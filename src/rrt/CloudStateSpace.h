@@ -42,9 +42,14 @@ public:
                                     const Eigen::Vector3d &target,
                                     double stepSize) const;
 
+  Eigen::Vector3d randomState() const;
+
+  Eigen::Vector3d radiusRandomState(const Eigen::Vector3d point, double radius) const;
+
+
 private:
   std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer_;
-  double min_check_step_ = 0.1;
+  double min_check_step_ = 0.2; //todo: move to config file
 };
 
 }  // namespace RRT

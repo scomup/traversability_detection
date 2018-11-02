@@ -106,6 +106,17 @@ void CloudAnalyzer<POINT_TYPE>::EstimateTraversability()
 }
 
 template <typename POINT_TYPE>
+std::vector<int> CloudAnalyzer<POINT_TYPE>::FindPointsInRadius(const Eigen::Vector3d in_point,
+                                                               const float radius) const
+{
+    POINT_TYPE point;
+    point.x = in_point.x();
+    point.y = in_point.y();
+    point.z = in_point.z();
+    return FindPointsInRadius(point, radius);
+}
+
+template <typename POINT_TYPE>
 std::vector<int> CloudAnalyzer<POINT_TYPE>::FindPointsInRadius(const POINT_TYPE point, float radius) const
 {
     std::vector<int> pointIdxRadiusSearch;

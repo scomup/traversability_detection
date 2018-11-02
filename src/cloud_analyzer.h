@@ -17,13 +17,13 @@
 
 
 
-class HandlerForCloudAnalyzer;
+class CloudAnalyzerHandle;
 
 template <typename POINT_TYPE>
 class CloudAnalyzer
 {
   
-  friend class HandlerForCloudAnalyzer;
+  friend class CloudAnalyzerHandle;
 
   enum TRAVERSABILITY
   {
@@ -49,6 +49,8 @@ public:
   bool EstimateTraversabilityLite(const POINT_TYPE point) const;
 
   bool EstimateTraversabilityLite(const Eigen::Vector3d point) const;
+
+  std::vector<int> FindPointsInRadius(const Eigen::Vector3d point, const float radius) const;
 
   const typename pcl::PointCloud<POINT_TYPE>::Ptr getcloud(){return pcl_point_cloud_;};
 

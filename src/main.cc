@@ -16,8 +16,8 @@
 #include "rrt/BiRRT.h"
 #include "rrt/CloudStateSpace.h"
 #include "cloud_analyzer.h"
-#include "viewer/handler_for_cloud_analyzer.h"
-#include "viewer/handler_for_BiRRT.h"
+#include "viewer/cloud_analyzer_handle.h"
+#include "viewer/planner_handle.h"
 
 
 
@@ -116,23 +116,12 @@ int main(int argc, char **argv)
 
 
     auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(cloud);
-    auto handler_for_cloud_analyzer = std::make_shared<HandlerForCloudAnalyzer>(cloud_analyzer);
-    viewer->SetCloudDrawer(handler_for_cloud_analyzer);
+    auto cloud_analyzer_handle = std::make_shared<CloudAnalyzerHandle>(cloud_analyzer);
+    viewer->SetCloudDrawer(cloud_analyzer_handle);
     auto state_space = std::make_shared<RRT::CloudStateSpace>(cloud_analyzer);
-    auto bi_rrt = std::make_shared<RRT::BiRRT<Eigen::Vector3d>>(
-        state_space, 
-        [](Eigen::Vector3d state) { size_t seed = 0;
-            boost::hash_combine(seed, state.x());
-            boost::hash_combine(seed, state.y());
-            boost::hash_combine(seed, state.z());
-            return seed; },
-        3);
-    bi_rrt->setGoalMaxDist(0.5);
-    bi_rrt->setStepSize(0.5);
-    bi_rrt->setMaxIterations(1e6);
-    auto handler_for_rrt = std::make_shared<HandlerForBiRRT>(bi_rrt);
+    auto planner_handle = std::make_shared<PlannerHandle>(state_space);
 
-    viewer->SetRRTHandler(handler_for_rrt);
+    viewer->SetRRTHandler(planner_handle);
 
     viewer_thread.join();
     

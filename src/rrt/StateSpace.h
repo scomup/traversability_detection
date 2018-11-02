@@ -22,6 +22,8 @@ public:
      */
     virtual T randomState() const = 0;
 
+    virtual T radiusRandomState(const T point, double radius) const = 0;
+
     /**
      * Finds a state in the direction of @target from @source.state().
      * This new state will potentially be added to the tree.  No need to do

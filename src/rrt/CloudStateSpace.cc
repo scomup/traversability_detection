@@ -56,11 +56,32 @@ bool CloudStateSpace::transitionValid(const Vector3d &from,
     for (double l = 0; l < len; l += min_check_step_)
     {
         Vector3d mid = from + delta * l;
-        if (!stateValid(mid))
+        Eigen::Vector3d mid_on_suf;
+        cloud_analyzer_->FindPointLieOnTheSurface(mid, mid_on_suf);
+
+        if (!stateValid(mid_on_suf))
             return false;
     }
     return true;
 }
+
+Eigen::Vector3d CloudStateSpace::randomState() const
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = cloud_analyzer_->getcloud();
+    int i = rand() % cloud->size();
+    Eigen::Vector3d state(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
+    return state;
+}
+
+Eigen::Vector3d CloudStateSpace::radiusRandomState(const Eigen::Vector3d point, double radius) const
+{
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = cloud_analyzer_->getcloud();
+    std::vector<int> idx = cloud_analyzer_->FindPointsInRadius(point, radius);
+    int i = idx[rand() % idx.size()];
+    Eigen::Vector3d state(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
+    return state;
+}
+
 
 }  // namespace RRT
 
