@@ -31,6 +31,15 @@ public:
     rrt_->setStepSize(0.5);
     rrt_->setMaxIterations(1e6);
 
+    auto path_optimizer = std::make_shared<RRT::PathOptimizer<Eigen::Vector3d>>(
+        state_space,
+        [](Eigen::Vector3d state) { size_t seed = 0;
+            boost::hash_combine(seed, state.x());
+            boost::hash_combine(seed, state.y());
+            boost::hash_combine(seed, state.z());
+            return seed; },
+        3);
+
     //path_opt_ = make()
   };
 
@@ -160,10 +169,12 @@ private:
 }
 
   std::shared_ptr<RRT::BiRRT<Eigen::Vector3d>> rrt_;
+  //std::shared_ptr<RRT::PathOptimizer<Eigen::Vector3d>> path_optimizer_;
   //std::shared_ptr<RRT::PathOptimizer> path_opt_;
   Eigen::Vector3d start_;
   Eigen::Vector3d goal_;
   std::thread* run_rrt_;
+  
 };
 
 #endif // HANDLER_FOR_BIRRT_H_

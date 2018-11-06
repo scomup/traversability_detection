@@ -375,4 +375,6 @@ protected:
 
     std::shared_ptr<StateSpace<T>> stateSpace_;
 };
+
+
 }  // namespace RRT
