@@ -32,6 +32,8 @@ Eigen::Vector3d CloudStateSpace::intermediateState(const Eigen::Vector3d &source
                                                    double stepSize) const
 {
     Eigen::Vector3d delta = target - source;
+    if(delta.norm() == 0)
+        return source;
     delta = delta / delta.norm(); //  unit vector
     Eigen::Vector3d val = source + delta * stepSize;
     Eigen::Vector3d new_point;

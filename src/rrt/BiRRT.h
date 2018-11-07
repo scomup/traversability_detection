@@ -167,7 +167,7 @@ class BiRRT
         for (int i = 0; i < startTree_.maxIterations(); i++)
         {
             grow();
-            std::cout << i << std::endl;
+            //std::cout << i << std::endl;
             if (startSolutionNode_ != nullptr && i >= minIterations()){
                 running_ = false;
                 return true;
