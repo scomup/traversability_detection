@@ -27,7 +27,6 @@ class BiRRT
           goalTree_(stateSpace, hash, dimensions)
     {
         minIterations_ = 0;
-        running_ = false;
         reset();
     }
 
@@ -161,19 +160,39 @@ class BiRRT
      */
     bool run()
     {
-        if(running_ == true)
+        static bool running = false;
+        static int i = 0;
+        if (running == true && step_run == false)
             return false;
-        running_ = true;
-        for (int i = 0; i < startTree_.maxIterations(); i++)
+        while (i < startTree_.maxIterations())
         {
+            running = true;
             grow();
             //std::cout << i << std::endl;
-            if (startSolutionNode_ != nullptr && i >= minIterations()){
-                running_ = false;
+            if (startSolutionNode_ != nullptr && i >= minIterations())
+            {
+                running = false;
+                i = 0;
                 return true;
             }
+            i++;
         }
-        running_ = false;
+        running = false;
+        i = 0;
+        return false;
+    }
+
+    bool step_run()
+    {
+        static int i = 0;
+
+        if (startSolutionNode_ || i >= startTree_.maxIterations())
+        {
+            i = 0;
+            return true;
+        }
+        grow();
+        i++;
         return false;
     }
 
@@ -225,7 +244,6 @@ class BiRRT
     }
 
   private:
-    bool running_;
     Tree<T> startTree_;
     Tree<T> goalTree_;
 

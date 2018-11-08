@@ -49,7 +49,7 @@ public:
 
 private:
   std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer_;
-  double min_check_step_ = 0.2; //todo: move to config file
+  double min_check_step_ = 0.1; //todo: move to config file
 };
 
 }  // namespace RRT

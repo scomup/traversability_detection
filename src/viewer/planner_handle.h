@@ -7,6 +7,7 @@
 #include <pangolin/pangolin.h>
 #include <iostream>
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 #include "../rrt/BiRRT.h"
@@ -57,10 +58,7 @@ public:
 
   void run()
   {
-    planner_->reset();
-    planner_->setStartState(start_);
-    planner_->setGoalState(goal_);
-    run_planner_ =  new std::thread(&PlannerHandle::RunRRT, this);
+    run_planner_ =  new std::thread(&PlannerHandle::RunPlanner, this);
   }
 
   void DrawStart() const
@@ -75,8 +73,10 @@ public:
     drawSphere((GLfloat)goal_.x(),(GLfloat)goal_.y(),(GLfloat)goal_.z(), 0.1);
   }
 
-  void DrawPath() const
+  void DrawPath()
   {
+    std::unique_lock<std::mutex> lock(mutex_);
+
     auto &start_tree = planner_->startTree();
     auto &goal_tree = planner_->goalTree();
 
@@ -116,10 +116,11 @@ public:
         pangolin::glDrawLine(p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
       }
     }
+    /*
     glColor3f(1.0f, 0.0f, 0.0f);
-    glLineWidth(20);
+    glLineWidth(5);
 
-/*
+
     for (const auto &node : path_optimizer_->allNodes())
     {
       if (node.parent())
@@ -129,34 +130,52 @@ public:
         pangolin::glDrawLine(p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
       }
     }
-    */
+  */  
 
     
         auto path = path_optimizer_->getPath();
         glColor3f(1.0f, 0.0f, 0.0f);
-        glLineWidth(20);
+        glLineWidth(10);
         glBegin(GL_LINE_STRIP);
         for (auto it = path.begin(); it != path.end(); it++)
         {
           glVertex3f(it->x(), it->y(), it->z());
         }
         glEnd();
-  
+        
   }
 
 private:
 
-int flag = false;
-  void RunRRT()
-  {
-    planner_->run();
+  void RunPlanner()
+  {    
+    planner_->reset();
+    planner_->setStartState(start_);
+    planner_->setGoalState(goal_);
+
+    bool finish_init_plan = false;
+    while (!finish_init_plan)
+    {
+      mutex_.lock();
+      finish_init_plan = planner_->step_run();
+      mutex_.unlock();
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+    mutex_.lock();
     auto path = planner_->getPath();
     path_optimizer_->reset();
-
     path_optimizer_->SetInitPath(path);
-    path_optimizer_->run();
-    flag = true;
-    
+    mutex_.unlock();
+
+    bool finish_opti_plan = false;
+    while (!finish_opti_plan)
+    {
+      mutex_.lock();
+      finish_opti_plan = path_optimizer_->step_run();
+      mutex_.unlock();
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+    }    
   }
 
   inline void drawSphere(GLfloat xx, GLfloat yy, GLfloat zz, GLfloat radius, GLfloat M = 10, GLfloat N = 10) const
@@ -208,6 +227,7 @@ int flag = false;
   Eigen::Vector3d start_;
   Eigen::Vector3d goal_;
   std::thread* run_planner_;
+  std::mutex mutex_;
   
 };
 

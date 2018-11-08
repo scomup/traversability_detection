@@ -67,6 +67,21 @@ class PathOptimizer : public Tree<T>
         
     }
 
+    bool step_run()
+    {
+        static int i = 0;
+
+        if (i >= this->maxIterations_)
+        {
+            i = 0;
+            return true;
+        }
+        grow();
+        i++;
+        return false;
+    }
+
+
     bool run()
     {
         //  grow the tree until we find the goal or run out of iterations
