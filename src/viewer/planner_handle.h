@@ -58,7 +58,11 @@ public:
 
   void run()
   {
-    run_planner_ =  new std::thread(&PlannerHandle::RunPlanner, this);
+    if (run_planner_ != nullptr){
+      run_planner_->detach();
+      run_planner_ = nullptr;
+    }
+    run_planner_ = new std::thread(&PlannerHandle::RunPlanner, this);
   }
 
   void DrawStart() const
