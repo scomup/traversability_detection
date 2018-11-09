@@ -22,7 +22,7 @@ public:
      */
     virtual T randomState() const = 0;
 
-    virtual T radiusRandomState(const T point, double radius) const = 0;
+    virtual std::vector<T> radiusRandomState(const T point, double radius) const = 0;
 
     /**
      * Finds a state in the direction of @target from @source.state().

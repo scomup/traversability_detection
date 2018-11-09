@@ -40,8 +40,7 @@ public:
             boost::hash_combine(seed, state.z());
             return seed; },
         3);
-
-    //path_opt_ = make()
+    path_optimizer_->setMaxIterations(500);
   };
 
 
@@ -58,10 +57,6 @@ public:
 
   void run()
   {
-    if (run_planner_ != nullptr){
-      run_planner_->detach();
-      run_planner_ = nullptr;
-    }
     run_planner_ = new std::thread(&PlannerHandle::RunPlanner, this);
   }
 
@@ -88,7 +83,7 @@ public:
     {
       auto path = planner_->getPath();
       glColor3f(0.0f, 0.0f, 0.0f);
-      glLineWidth(5);
+      glLineWidth(3);
       glBegin(GL_LINE_STRIP);
       for (auto it = path.begin(); it != path.end(); it++)
       {
@@ -97,7 +92,7 @@ public:
       glEnd();
     }
 
-    glLineWidth(5);
+    glLineWidth(3);
     glColor3f(0.0f, 0.0f, 1.0f);
     for (const auto &node : start_tree.allNodes())
     {
@@ -108,7 +103,7 @@ public:
         pangolin::glDrawLine(p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
       }
     }
-
+    glLineWidth(3);
     glColor3f(0.5f, 0.0f, 0.5f);
     for (const auto &node : goal_tree.allNodes())
     {
@@ -120,9 +115,9 @@ public:
         pangolin::glDrawLine(p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
       }
     }
-    /*
+#if 0
     glColor3f(1.0f, 0.0f, 0.0f);
-    glLineWidth(5);
+    glLineWidth(1);
 
 
     for (const auto &node : path_optimizer_->allNodes())
@@ -134,52 +129,56 @@ public:
         pangolin::glDrawLine(p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
       }
     }
-  */  
+#else
 
-    
-        auto path = path_optimizer_->getPath();
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glLineWidth(10);
-        glBegin(GL_LINE_STRIP);
-        for (auto it = path.begin(); it != path.end(); it++)
-        {
-          glVertex3f(it->x(), it->y(), it->z());
-        }
-        glEnd();
-        
+    auto path = path_optimizer_->getPath();
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glLineWidth(5);
+    glBegin(GL_LINE_STRIP);
+    for (auto it = path.begin(); it != path.end(); it++)
+    {
+      glVertex3f(it->x(), it->y(), it->z());
+    }
+    glEnd();
+#endif
   }
 
 private:
-
   void RunPlanner()
-  {    
-    planner_->reset();
-    planner_->setStartState(start_);
-    planner_->setGoalState(goal_);
+  {
 
-    bool finish_init_plan = false;
-    while (!finish_init_plan)
+    if (main_thread_mutex_.try_lock())
     {
+      planner_->reset();
+      planner_->setStartState(start_);
+      planner_->setGoalState(goal_);
+
+      bool finish_init_plan = false;
+      while (!finish_init_plan)
+      {
+        mutex_.lock();
+        finish_init_plan = planner_->step_run();
+        mutex_.unlock();
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+      }
+
       mutex_.lock();
-      finish_init_plan = planner_->step_run();
+      auto path = planner_->getPath();
+      path_optimizer_->reset();
+      path_optimizer_->SetInitPath(path);
       mutex_.unlock();
-      std::this_thread::sleep_for(std::chrono::microseconds(100));
+
+      bool finish_opti_plan = false;
+      while (!finish_opti_plan)
+      {
+        mutex_.lock();
+        finish_opti_plan = path_optimizer_->step_run();
+        mutex_.unlock();
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        
+      }
+      main_thread_mutex_.unlock();
     }
-    mutex_.lock();
-    auto path = planner_->getPath();
-    path_optimizer_->reset();
-    path_optimizer_->SetInitPath(path);
-    mutex_.unlock();
-
-    bool finish_opti_plan = false;
-    while (!finish_opti_plan)
-    {
-      mutex_.lock();
-      finish_opti_plan = path_optimizer_->step_run();
-      mutex_.unlock();
-      std::this_thread::sleep_for(std::chrono::microseconds(100));
-
-    }    
   }
 
   inline void drawSphere(GLfloat xx, GLfloat yy, GLfloat zz, GLfloat radius, GLfloat M = 10, GLfloat N = 10) const
@@ -232,6 +231,7 @@ private:
   Eigen::Vector3d goal_;
   std::thread* run_planner_;
   std::mutex mutex_;
+  std::mutex main_thread_mutex_;
   
 };
 

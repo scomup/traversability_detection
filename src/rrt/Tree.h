@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 
@@ -81,6 +82,8 @@ public:
     Tree(std::shared_ptr<StateSpace<T>> stateSpace,
          std::function<size_t(T)> hashT, int dimensions)
         : nodemap_(20, hashT),
+          //near_states_(20,hashT),
+          //near_states_active_(20,hashT),
           dimensions_(dimensions),
           kdtree_(flann::KDTreeSingleIndexParams())
             {
@@ -142,26 +145,16 @@ public:
     /**
      * Removes nodes from nodes_ and nodemap_ so it can be run() again.
      */
-    void reset(bool eraseRoot = false)
+    void reset(bool eraseRoot = true)
     {
+        //near_states_.clear();
+        //near_states_active_.clear();
+
         kdtree_ = flann::Index<flann::L2_Simple<double>>(
             flann::KDTreeSingleIndexParams());
-        if (eraseRoot)
-        {
-            nodes_.clear();
-            nodemap_.clear();
-        }
-        else if (nodes_.size() > 1)
-        {
-            T root = rootNode()->state();
-            nodemap_.clear();
-            nodes_.clear();
-            nodes_.emplace_back(root, nullptr, dimensions_);
-            nodemap_.insert(std::pair<T, Node<T> *>(root, &nodes_.back()));
+        nodes_.clear();
+        nodemap_.clear();
 
-            kdtree_.buildIndex(flann::Matrix<double>(
-                (double *)&(rootNode()->state()), 1, dimensions_));
-        }
     }
 
     /**
@@ -173,15 +166,34 @@ public:
         //  extend towards goal, waypoint, or random state depending on the
         //  biases and a random number
         return extend(stateSpace_->randomState());
+        //T rand_state;
+        //getRandomStateInNearbySet(rand_state);
+        //return extend(rand_state);
     }
-
+/*
+    bool findStateCloseTree(const T& state)
+    {
+        T rand_state;
+        double dist;
+        int c = 0;
+        while (c++)
+        {
+            rand_state = stateSpace_->randomState();
+            nearest(rand_state, &dist);
+            if (dist < stepSize_*20)
+            {
+                break;
+            }
+            if(c>)
+        }
+        return rand_state;
+    }*/
     /**
      * Find the node int the tree closest to @state.  Pass in a double pointer
      * as the second argument to get the distance that the node is away from
      * @state. This method searches a k-d tree of the points to determine
      */
     Node<T>* nearest(const T& state, double* distanceOut = nullptr) {
-        Node<T>* best = nullptr;
 
         // k-NN search (O(log(N)))
         flann::Matrix<double> query;
@@ -194,13 +206,47 @@ public:
 
         kdtree_.knnSearch(query, indices, dists, 1, flann::SearchParams());
 
-        if (distanceOut)
-            *distanceOut = stateSpace_->distance(state, best->state());
-
         T point;
         point = (T)kdtree_.getPoint(indices[0][0]);
 
+        if (distanceOut){
+            *distanceOut = stateSpace_->distance(state, point);
+        }
+
         return nodemap_[point];
+    }
+    /*
+    bool getRandomStateInNearbySet(T &state){
+        if (near_states_active_.empty())
+            return false;
+        auto item = near_states_active_.begin();
+        int rand_id = rand() % near_states_active_.size();
+        std::advance(item, rand_id);
+        state = *item;
+        near_states_active_.erase(item);
+        return true;
+    }
+    */
+    void addNode(const T &target, Node<T> *parent)
+    {
+        nodes_.emplace_back(target, parent, dimensions_);
+        kdtree_.addPoints(flann::Matrix<double>(
+            nodes_.back().coordinates()->data(), 1, dimensions_));
+        nodemap_.insert(
+            std::pair<T, Node<T> *>(target, &nodes_.back()));
+        /*
+        auto node = &this->nodes_.back();
+        auto states = this->stateSpace_->radiusRandomState(node->state(), 5);
+
+        for (T s : states)
+        {
+            if(near_states_.count(s) == 0)
+            {
+                near_states_.insert(s);
+                near_states_active_.insert(s);
+            }
+        }
+        */
     }
 
     /**
@@ -213,6 +259,8 @@ public:
      */
     virtual Node<T>* extend(const T& target, Node<T>* source = nullptr) {
         //  if we weren't given a source point, try to find a close node
+        //if(nodemap_.count(target) != 0)
+        //    return nullptr;
         if (!source) {
             source = nearest(target, nullptr);
             if (!source) {
@@ -234,11 +282,7 @@ public:
         }
 
         // Add a node to the tree for this state
-        nodes_.emplace_back(intermediateState, source, dimensions_);
-        kdtree_.addPoints(flann::Matrix<double>(
-            nodes_.back().coordinates()->data(), 1, dimensions_));
-        nodemap_.insert(
-            std::pair<T, Node<T>*>(intermediateState, &nodes_.back()));
+        addNode(intermediateState, source);
         return &nodes_.back();
     }
 
@@ -334,13 +378,13 @@ public:
             return rootNode()->state();
     }
     void setStartState(const T& startState) {
-        reset(true);
+        reset();
 
         //  create root node from provided start state
-        nodes_.emplace_back(startState, nullptr, dimensions_);
-        nodemap_.insert(std::pair<T, Node<T>*>(startState, &nodes_.back()));
         kdtree_.buildIndex(flann::Matrix<double>(
-            (double*)&(rootNode()->state()), 1, dimensions_));
+            (double*)&(startState), 1, dimensions_));
+        addNode(startState, nullptr);
+
     
     }
 
@@ -369,11 +413,13 @@ protected:
     double goalMaxDist_;
 
     double stepSize_;
-    double maxStepSize_;
 
     flann::Index<flann::L2_Simple<double>> kdtree_;
 
     std::shared_ptr<StateSpace<T>> stateSpace_;
+
+    //std::unordered_set<T, std::function<size_t(T)>> near_states_;
+    //std::unordered_set<T, std::function<size_t(T)>> near_states_active_;
 };
 
 

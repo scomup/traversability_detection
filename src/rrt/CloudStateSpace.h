@@ -44,7 +44,7 @@ public:
 
   Eigen::Vector3d randomState() const;
 
-  Eigen::Vector3d radiusRandomState(const Eigen::Vector3d point, double radius) const;
+  std::vector<Eigen::Vector3d> radiusRandomState(const Eigen::Vector3d point, double radius) const;
 
 
 private:

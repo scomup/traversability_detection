@@ -45,13 +45,6 @@ class BiRRT
     const Tree<T> &startTree() const { return startTree_; }
     const Tree<T> &goalTree() const { return goalTree_; }
 
-    bool isASCEnabled() const { return startTree_.isASCEnabled(); }
-    void setASCEnabled(bool checked)
-    {
-        startTree_.setASCEnabled(checked);
-        goalTree_.setASCEnabled(checked);
-    }
-
     double goalBias() const { return startTree_.goalBias(); }
     void setGoalBias(double goalBias)
     {
@@ -75,13 +68,6 @@ class BiRRT
      */
     int minIterations() const { return minIterations_; }
     void setMinIterations(int itr) { minIterations_ = itr; }
-
-    double waypointBias() const { return startTree_.waypointBias(); }
-    void setWaypointBias(double waypointBias)
-    {
-        startTree_.setWaypointBias(waypointBias);
-        goalTree_.setWaypointBias(waypointBias);
-    }
 
 
     double stepSize() const { return startTree_.stepSize(); }

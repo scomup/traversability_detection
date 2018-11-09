@@ -57,7 +57,7 @@ bool CloudStateSpace::transitionValid(const Vector3d &from,
 
     for (double l = 0; l < len; l += min_check_step_)
     {
-        Vector3d mid = from + delta * l;
+        Vector3d mid = from + delta * l/ len;
         Eigen::Vector3d mid_on_suf;
         cloud_analyzer_->FindPointLieOnTheSurface(mid, mid_on_suf);
 
@@ -75,13 +75,17 @@ Eigen::Vector3d CloudStateSpace::randomState() const
     return state;
 }
 
-Eigen::Vector3d CloudStateSpace::radiusRandomState(const Eigen::Vector3d point, double radius) const
+std::vector<Eigen::Vector3d> CloudStateSpace::radiusRandomState(const Eigen::Vector3d point, double radius) const
 {
     const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = cloud_analyzer_->getcloud();
     std::vector<int> idx = cloud_analyzer_->FindPointsInRadius(point, radius);
-    int i = idx[rand() % idx.size()];
-    Eigen::Vector3d state(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
-    return state;
+    std::vector<Eigen::Vector3d> states;
+    for (auto i : idx)
+    {
+        if(cloud_analyzer_->EstimateTraversabilityLite(cloud->points[i]))
+            states.emplace_back(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
+    }
+    return states;
 }
 
 

@@ -102,14 +102,26 @@ class PathOptimizer : public Tree<T>
         //  we hit our iteration limit and didn't reach the goal :(
         return false;
     }
-    
+
+    Eigen::Vector3d FindStateCloseTree() 
+    {
+        Eigen::Vector3d rand_state;
+        double dist;
+        while (true)
+        {
+            rand_state = this->stateSpace_->randomState();
+            Tree<Eigen::Vector3d>::nearest(rand_state, &dist);
+            if (dist < samp_radius_)
+            {
+                break;
+            }
+        }
+        return rand_state;
+    }
+
     Node<T> *grow()
     {
-
-        int idx = rand() % this->nodemap_.size();
-        auto random_it = std::next(std::begin(this->nodemap_), idx);
-        auto sample = random_it->first;
-        auto rand_point = this->stateSpace_->radiusRandomState(sample, samp_radius_);
+        auto rand_point = FindStateCloseTree();
         return extend(rand_point);
     }
 
@@ -130,12 +142,7 @@ class PathOptimizer : public Tree<T>
         {
             T point = (T)this->kdtree_.getPoint(indices[0][i]);
             nodes.push_back(this->nodemap_[point]);
-            //auto a = state - point;
-            //auto d = a.norm();
-            //std::cout<<d<<std::endl;
         }
-
-
         return nodes;
     }
 
@@ -169,13 +176,8 @@ class PathOptimizer : public Tree<T>
         if(source == nullptr)
             return nullptr;
 
-
+        this->addNode(target, source);
         // Add a node to the tree for this state
-        this->nodes_.emplace_back(target, source, this->dimensions_);
-        this->kdtree_.addPoints(flann::Matrix<double>(
-            this->nodes_.back().coordinates()->data(), 1, this->dimensions_));
-        this->nodemap_.insert(
-            std::pair<T, Node<T> *>(target, &this->nodes_.back()));
 
         auto new_node = &this->nodes_.back();
 
