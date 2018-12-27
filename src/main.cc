@@ -82,47 +82,63 @@ void ReadLas (const std::string &file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr 
     }
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr gcloud;
+
+void 
+cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
+{
+  // ... do data processing
+  pcl::PointCloud<pcl::PointXYZ>::Ptr local_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg (*input, *local_cloud);  
+  //pcl::io::savePCDFileASCII("/home/liu/workspace/traversability_detection/build/f.pcd", *local_cloud);
+  //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZ>);
+  //pcl::io::loadPCDFile("/home/liu/workspace/traversability_detection/build/f.pcd", *cloud_in);
+
+
+  gcloud = local_cloud;
+}
+
 
 int main(int argc, char **argv)
 {
+    
+ ros::init (argc, argv, "test_traversability");
+  ros::NodeHandle nh;
+  // Create a ROS subscriber for the input point cloud
+  ros::Subscriber sub = nh.subscribe ("/map3d", 1, cloud_cb);
 
-    std::string filename;
-    if (argc >= 2)
-    {
-        filename = argv[1];
-    }
-    else
-    {
-        std::cout<<"No input file!"<<std::endl;
-        //return 0;
-        filename = std::string("/home/liu/bag/lx35/lx35_7f_aisle.bag");
-    }
-
-    auto viewer = new Viewer();
-    auto viewer_thread = std::thread(&Viewer::Run, viewer);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-    ReadLas(filename, cloud);
-
-      // Create the filtering object
-  pcl::PassThrough<pcl::PointXYZ> filter;
-  filter.setInputCloud(cloud);
-  filter.setFilterFieldName("x");
-  filter.setFilterLimits(-100, 0);
-  filter.filter (*cloud);
-  filter.setFilterFieldName("y");
-  filter.setFilterLimits(-100, 0);
-  filter.filter (*cloud);
+  std::cout<<"wait map3d topic\n";
+  while (gcloud == nullptr && ros::ok())
+  {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      ros::spinOnce();
+  }
+  std::cout<<"map3d loaded.\n";
 
 
-    auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(cloud);
-    auto cloud_analyzer_handle = std::make_shared<CloudAnalyzerHandle>(cloud_analyzer);
-    viewer->SetCloudDrawer(cloud_analyzer_handle);
-    auto state_space = std::make_shared<RRT::CloudStateSpace>(cloud_analyzer);
-    auto planner_handle = std::make_shared<PlannerHandle>(state_space);
+  pcl::io::savePCDFileASCII("/home/liu/workspace/traversability_detection/build/f.pcd", *gcloud);
+  pcl::io::loadPCDFile("/home/liu/workspace/traversability_detection/build/f.pcd", *gcloud);
 
-    viewer->SetRRTHandler(planner_handle);
+  std::vector< int > idx;
+  std::cout<<gcloud->size()<<std::endl;
+  pcl::removeNaNFromPointCloud(*gcloud, *gcloud, idx); 
+  std::cout<<gcloud->size()<<std::endl;
+  
 
-    viewer_thread.join();
+  auto viewer = new Viewer();
+  auto viewer_thread = std::thread(&Viewer::Run, viewer);
+
+
+    
+
+  auto cloud_analyzer = std::make_shared<CloudAnalyzer<pcl::PointXYZ>>(gcloud);
+  auto cloud_analyzer_handle = std::make_shared<CloudAnalyzerHandle>(cloud_analyzer);
+  viewer->SetCloudDrawer(cloud_analyzer_handle);
+  auto state_space = std::make_shared<RRT::CloudStateSpace>(cloud_analyzer);
+  auto planner_handle = std::make_shared<PlannerHandle>(state_space);
+
+  viewer->SetRRTHandler(planner_handle);
+
+  viewer_thread.join();
     
 }

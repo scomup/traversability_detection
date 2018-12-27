@@ -22,6 +22,7 @@ class CloudAnalyzerHandle;
 template <typename POINT_TYPE>
 class CloudAnalyzer
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   
   friend class CloudAnalyzerHandle;
 
@@ -29,7 +30,8 @@ class CloudAnalyzer
   {
     TRAVERSABLE = 100,
     ADJACENTED = 50,
-    UNTRAVERSABLE = 0
+    UNTRAVERSABLE = 0,
+    IGNORE = 200
   };
 
 public:
@@ -81,9 +83,11 @@ private:
   pcl::PointCloud<pcl::Normal>::Ptr normal_;
   std::vector<uint8_t> traversability_;
   std::vector<double> angles_;
+  std::vector<std::vector<int>> idxs_;
   const double max_angle_ = M_PI/6;
-  const double max_sd_ = 0.1;
-  const double radius_ = 0.3;
+  const double max_sd_ = M_PI/24;
+  const double normal_radius_ = 0.3;
+  const double radius_ = 0.2;
 };
 
 //template class CloudAnalyzer<pcl::PointNormal>;

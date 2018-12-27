@@ -7,6 +7,7 @@ namespace pangolin
 {
 struct MyHandler3D : Handler3D
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   std::mutex mutex_;
   Eigen::Matrix4d trans_pose_;
   Eigen::Vector3d start_ = Eigen::Vector3d(0,0,0);

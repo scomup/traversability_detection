@@ -41,6 +41,8 @@
 class Viewer
 {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    
     Viewer();
 
     // Main thread function. Draw points, keyframes, the current camera pose and the last processed
@@ -65,7 +67,6 @@ private:
 
 
     bool finish_;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud_;
     Eigen::Matrix4d pose_;
     std::mutex mutex_frame_;
     std::shared_ptr<CloudAnalyzerHandle> cloud_analyzer_handle_;

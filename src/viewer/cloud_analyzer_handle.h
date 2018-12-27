@@ -8,36 +8,91 @@
 
 #include "../cloud_analyzer.h"
 
-
 class CloudAnalyzerHandle
 {
 public:
-  CloudAnalyzerHandle(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer) 
-  : cloud_analyzer_(cloud_analyzer){};
+  CloudAnalyzerHandle(std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer)
+      : cloud_analyzer_(cloud_analyzer){};
 
   void DrawPoint(bool mode = 0)
   {
+    double scale = 0.05;
     if (cloud_analyzer_->pcl_point_cloud_ == nullptr)
       return;
     glPointSize(3);
-    glBegin(GL_POINTS);
 
+    glBegin(GL_POINTS);
     for (size_t i = 0; i < cloud_analyzer_->pcl_point_cloud_->size(); i++)
     {
-      pcl::PointXYZ& point = cloud_analyzer_->pcl_point_cloud_->points[i];
-      if (mode == 0){
-        pangolin::glColorHSV(std::abs(point.z * 20));
+      if (cloud_analyzer_->traversability_[i] == CloudAnalyzer<pcl::PointXYZ>::TRAVERSABILITY::IGNORE)
+        continue;
+      pcl::PointXYZ &point = cloud_analyzer_->pcl_point_cloud_->points[i];
+      if (mode == 0)
+      {
+        pangolin::glColorHSV(std::abs(point.z * 100));
       }
-      else if (mode == 1){
-        //bool t = cloud_analyzer_->traversability_[i];
+      else if (mode == 1)
+      {
         pangolin::glColorHSV(cloud_analyzer_->traversability_[i]);
       }
       glVertex3f(point.x, point.y, point.z);
     }
-
     glEnd();
+    /*
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < cloud_analyzer_->pcl_point_cloud_->size(); i++)
+    {
+      if(cloud_analyzer_->traversability_[i] == CloudAnalyzer<pcl::PointXYZ>::TRAVERSABILITY::IGNORE)
+        continue;
+      pcl::PointXYZ &point = cloud_analyzer_->pcl_point_cloud_->points[i];
+      pcl::Normal &normal = cloud_analyzer_->normal_->points[i];
+      if (mode == 0)
+      {
+        pangolin::glColorHSV(std::abs(point.z * 100));
+      }
+      else if (mode == 1)
+      {
+        //bool t = cloud_analyzer_->traversability_[i];
+        pangolin::glColorHSV(cloud_analyzer_->traversability_[i]);
+      }
+      glVertex3f(point.x, point.y, point.z);
+      glVertex3f(
+          point.x + normal.normal[0] * scale,
+          point.y + normal.normal[1] * scale,
+          point.z + normal.normal[2] * scale);
+    }
+    glEnd();
+*/
+/*
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < cloud_analyzer_->pcl_point_cloud_->size(); i++)
+    {
+      if (cloud_analyzer_->traversability_[i] !=
+          CloudAnalyzer<pcl::PointXYZ>::TRAVERSABILITY::UNTRAVERSABLE)
+        continue;
+      for (auto ii : cloud_analyzer_->idxs_[i])
+      {
+        if (cloud_analyzer_->traversability_[ii] == CloudAnalyzer<pcl::PointXYZ>::TRAVERSABILITY::ADJACENTED)
+        {
+          pcl::PointXYZ &a = cloud_analyzer_->pcl_point_cloud_->points[i];
+          pcl::PointXYZ &b = cloud_analyzer_->pcl_point_cloud_->points[ii];
+          if (mode == 0)
+          {
+            pangolin::glColorHSV(std::abs(a.z * 100));
+          }
+          else if (mode == 1)
+          {
+            //bool t = cloud_analyzer_->traversability_[i];
+            pangolin::glColorHSV(cloud_analyzer_->traversability_[i]);
+          }
+          
+          glVertex3f(a.x, a.y, a.z);
+          glVertex3f(b.x, b.y, b.z);
+        }
+      }
+    }
+    glEnd();*/
   }
-
 
   void DrawPlane(const Eigen::Vector3d point, const GLfloat radius, const Eigen::Vector3d normal)
   {
@@ -76,7 +131,7 @@ public:
     if (cloud_analyzer_->pcl_point_cloud_ == nullptr)
       return;
 
-    auto& pcl_point_cloud = cloud_analyzer_->pcl_point_cloud_;
+    auto &pcl_point_cloud = cloud_analyzer_->pcl_point_cloud_;
     pcl::PointXYZ search_point;
     search_point.x = pose(0, 3);
     search_point.y = pose(1, 3);
@@ -122,8 +177,7 @@ public:
                          projected_point.z() + plane_parameters.z());
   }
 
-  std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> GetCloudAnalyzer(){return cloud_analyzer_;};
-
+  std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> GetCloudAnalyzer() { return cloud_analyzer_; };
 
 private:
   std::shared_ptr<CloudAnalyzer<pcl::PointXYZ>> cloud_analyzer_;
